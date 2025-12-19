@@ -212,7 +212,7 @@ It comes with the following plugins:
 - `ensure.plugin.conform`: handle `conform.nvim` formatters installation.
 - `ensure.plugin.lint`: handle `nvim-lint` linters installation.
 
-Each plugin implements the [`ensure.Plugin` interface](lua/ensure/plugin.lua) and can be enabled or disabled using the `plugins` configuration option.
+Each plugin implements the [`ensure.Plugin` interface](lua/ensure/plugin/init.lua) and can be enabled or disabled using the `plugins` configuration option.
 
 You can provide your own plugins by implementing the `ensure.Plugin` interface and adding them to the `plugins` configuration option.
 
