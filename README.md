@@ -49,25 +49,25 @@ Default configuration is empty and just load all provided plugins:
 {
     install = false,
     --- Mason packages to install
- packages = {},
+    packages = {},
     --- Treesitter parsers to install
- parsers = {},
+    parsers = {},
     --- `conform.nvim` formatters by filetypes
     formatters = {},
     --- `nvim-lint` linters by filetypes
     linters = {},
- lsp = {
+    lsp = {
         --- LSP servers to enable
-  enable = {},
+        enable = {},
         --- LSP servers to disable (take precedence over `enable`)
-  disable = {},
- },
- ignore = {
+        disable = {},
+    },
+    ignore = {
         --- Mason packages to ignore (never install)
-  packages = {},
+        packages = {},
         --- Treesitter parsers to ignore (never install)
-  parsers = {},
- },
+        parsers = {},
+    },
     --- Enabled plugins
     plugins = {
         "ensure.plugin.mason",
