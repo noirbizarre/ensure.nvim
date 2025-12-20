@@ -1,4 +1,3 @@
-vim.print("Loading ensure.nvim config")
 return {
     "noirbizarre/ensure.nvim",
     event = "BufReadPre",
