@@ -59,10 +59,7 @@ function M:install(opts)
                 table.insert(to_install, lang)
             end
         end
-        if #to_install > 0 then
-            notify("Installing [Treesitter] parsers...")
-            ts.install(to_install)
-        end
+        ts.install(to_install)
     end
 end
 

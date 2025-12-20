@@ -17,10 +17,7 @@ function M:setup(opts)
             return type(p) == string and not (vim.list_contains(self.ignore, p) or Registry.is_installed(p))
         end, self.packages)
 
-        if #packages > 0 then
-            notify("Installing [Mason] packages...")
-            self:install_packages(packages)
-        end
+        self:install_packages(packages)
     end
 end
 
@@ -145,10 +142,7 @@ function M:autoinstall(ft)
                 table.insert(packages, package)
             end
         end
-        if #packages > 0 then
-            notify("Installing [Mason] packages for filetype " .. ft .. "...")
-            self:install_packages(packages)
-        end
+        self:install_packages(packages)
     end
 end
 
@@ -169,10 +163,7 @@ function M:install()
                 return not (vim.list_contains(self.ignore, package) or Registry.is_installed(package))
             end, packages)
         end
-        if #packages > 0 then
-            notify("Installing [Mason] packages...")
-            self:install_packages(packages)
-        end
+        self:install_packages(packages)
     end
 end
 

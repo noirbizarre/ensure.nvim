@@ -84,10 +84,7 @@ function M:install()
                 table.insert(packages, M.mapping[info.name] or info.name)
             end
         end
-        if #packages > 0 then
-            notify("Installing formatters...")
-            mason:install_packages(packages)
-        end
+        mason:install_packages(packages)
     end
 end
 

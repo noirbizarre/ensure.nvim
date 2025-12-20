@@ -69,10 +69,7 @@ function M:install()
                 table.insert(packages, M.mapping[linter] or linter)
             end
         end
-        if #packages > 0 then
-            notify("Installing linters...")
-            mason:install_packages(packages)
-        end
+        mason:install_packages(packages)
     end
 end
 

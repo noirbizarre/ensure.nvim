@@ -118,8 +118,6 @@ function M:install(opts)
             end
         end
 
-        notify("Installing LSP servers...")
-
         mason:install_packages(packages, function(package)
             -- Restart the LSP for the current buffer if it was just installed
             local lsp = self.mason_to_lsp[package] or package
