@@ -1,5 +1,4 @@
 local Plugin = require("ensure.plugin")
-local notify = require("ensure.notify")
 
 ---@class ensure.TreesitterPlugin : ensure.Plugin
 local M = Plugin:new()

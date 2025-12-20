@@ -16,7 +16,7 @@ Help to modularize `lazy.nvim` based config by providing:
 ```
 
 All dependencies are optional as `ensure.nvim` will detect installed plugin.
-But you can explicitely declare them to make sure they are installed:
+But you can explicitly declare them to make sure they are installed:
 
 ```lua
     {
@@ -31,15 +31,7 @@ But you can explicitely declare them to make sure they are installed:
     }
 ```
 
-This plugin can be lazy-loaded with:
-
-```lua
-{
-    "noirbizarre/ensure.nvim",
-    event = "BufReadPre",
-    cmd = "Ensure",
-}
-```
+This plugin is lazy-loaded by default.
 
 ### Configuration
 
@@ -181,7 +173,7 @@ The bang version `Ensure!` will install:
 
 You can also call the `Ensure` and `Ensure!` commands with a specific plugin name to only install dependencies related to that plugin:
 
-- `Ensure packages` to only install Mason packages from the `packages` setting.
+- `Ensure packages` to only install Mason packages from the `packages` setting
 - `Ensure parsers` to only install Treesitter parsers
 - `Ensure lsps` to only install LSP servers
 - `Ensure formatters` to only install `conform.nvim` formatters
@@ -288,20 +280,20 @@ I plan to add tests in the future, but for now, I rely on my own usage to ensure
 
 ## Acknowledgements
 
-First, thanks to @folke for his amazing work which made:
+First, thanks to [@folke](https://github.com/folke) for his amazing work which made:
 
 - this plugin possible
 - my Neovim configuration so much easier to manage
 - my daily Neovim experience so much better
-- learn lot on Neovim and `lazy.nvim` with its dotfiles and `LazyVim` (which I don't use but is a clear inspiration).
+- learn lot on Neovim and [`lazy.nvim`](https://github.com/folke/lazy.nvim) with its [dotfiles](https://github.com/folke/dot) and `LazyVim` (which I don't use but is a clear inspiration).
 
 Thanks to all the maintainers of the plugins I depend on:
 
-- @stevearc for `conform.nvim`
-- @mfussenegger for `nvim-lint`
-- the @mason-org team for `mason.nvim`
+- [@stevearc](https://github.com/stevearc) for [`conform.nvim`](https://github.com/stevearc/conform.nvim#formatters)
+- [@mfussenegger](https://github.com/mfussenegger) for [`nvim-lint`](https://github.com/mfussenegger/nvim-lint)
+- the [@mason-org](https://github.com/mason-org/mason.nvim) team for [`mason.nvim`](https://github.com/mason-org/mason.nvim)
 
 Thanks for the maintainers of the plugins I used as inspiration:
 
-- @rshkarin for `mason-nvim-lint`
-- @zapling `mason-conform.nvim`
+- [@rshkarin](https://github.com/rshkarin) for [`mason-nvim-lint`](https://github.com/rshkarin/mason-nvim-lint)
+- [@zapling](https://github.com/zapling) [`mason-conform.nvim`](https://github.com/zapling/mason-conform.nvim)
