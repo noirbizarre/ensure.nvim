@@ -51,10 +51,10 @@ function M:health()
         return
     end
 
-    if require("ensure.mason").is_enabled then
-        vim.health.ok("`ensure.mason` plugin is enabled")
+    if require("ensure.plugin.mason").is_enabled then
+        vim.health.ok("`ensure.plugin.mason` plugin is enabled")
     else
-        vim.health.error("`ensure.mason` plugin is not enabled, LSPs won't be installed")
+        vim.health.error("`ensure.plugin.mason` plugin is not enabled, LSPs won't be installed")
     end
 end
 

@@ -11,7 +11,7 @@ function M:setup(opts)
     -- if not self.is_installed then
     --     return
     -- end
-    self.is_enabled = self.is_installed and vim.list_contains(require("ensure.config").get_plugins(), "ensure.mason")
+    self.is_enabled = self.is_installed and vim.list_contains(require("ensure.config").get_plugins(), "ensure.plugin.mason")
 
     self:install()
 end

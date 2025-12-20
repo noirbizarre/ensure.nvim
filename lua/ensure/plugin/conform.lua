@@ -50,9 +50,9 @@ function M:health()
         vim.health.error("`conform.nvim` is not installed")
     end
     if mason.is_enabled then
-        vim.health.ok("`ensure.mason` plugin is enabled")
+        vim.health.ok("`ensure.plugin.mason` plugin is enabled")
     else
-        vim.health.warn("`ensure.mason` plugin is not enabled, formatters won't be installed")
+        vim.health.warn("`ensure.plugin.mason` plugin is not enabled, formatters won't be installed")
     end
 end
 
