@@ -1,6 +1,5 @@
 local Plugin = require("ensure.plugin")
 local mason = require("ensure.plugin.mason")
-local notify = require("ensure.notify")
 
 ---@class ensure.LspPlugin : ensure.Plugin
 local M = Plugin:new()

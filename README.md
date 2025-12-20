@@ -179,6 +179,14 @@ The bang version `Ensure!` will install:
 
 `ignore.packages` and `ignore.parsers` will be taken into account in both cases.
 
+You can also call the `Ensure` and `Ensure!` commands with a specific plugin name to only install dependencies related to that plugin:
+
+- `Ensure packages` to only install Mason packages from the `packages` setting.
+- `Ensure parsers` to only install Treesitter parsers
+- `Ensure lsps` to only install LSP servers
+- `Ensure formatters` to only install `conform.nvim` formatters
+- `Ensure linters` to only install `nvim-lint` linters
+
 ### Asynchronous on-demand loading
 
 
