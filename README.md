@@ -95,7 +95,7 @@ You can configure it once and for all:
 {
     "noirbizarre/ensure.nvim",
     opts = {
-        packages = {"mason", "packages", "to", "install"},
+        packages = {"mason", "packages", "to", "install", ft = {"package-for-filetype"}},
         parsers = {"treesitter", "parsers", "to", "install"},
         lsp = {
             enable = {"lsp", "to", "install", "and", "enable" },
@@ -218,9 +218,9 @@ You can provide your own plugins by implementing the `ensure.Plugin` interface a
 
 Here's a summary of the available plugins features:
 
-| Plugin | `setup()` | `BufferRead` | `Ensure` | `Ensure!` |
+| Plugin | `setup()` | `BufRead` | `Ensure` | `Ensure!` |
 | ------ | --------- | ---------- | ------ | ------- |
-| `ensure.plugin.mason` | Install `packages` | ❌ | Install `packages` | Install `packages` |
+| `ensure.plugin.mason` | Install `packages` | Install `packages.<filetype>` | Install `packages` (including filetypes) | Install `packages` (including filetype) |
 | `ensure.plugin.treesitter` | Install `parsers` | Install missing parsers for the filetype | Install `parsers` | Install all known treesitter parsers |
 | `ensure.plugin.lsp` | Enable `lsp.enable` parsers, skip `lsp.disable`, configure `lsp.*` LSPs | Install missing LSPs for the filetype | Install enabled LSP servers, skip `lsp.disable` | Install configured LSP servers |
 | `ensure.plugin.conform` | Declare formatters by filetype | Install missing formatters for the filetype | Install all registered formatters | Install all registered formatters |

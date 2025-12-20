@@ -8,12 +8,20 @@ function M:setup(opts)
     self.packages = opts.packages
     self.ignore = opts.ignore.packages
     self.is_installed, _ = pcall(require, "mason")
-    -- if not self.is_installed then
-    --     return
-    -- end
-    self.is_enabled = self.is_installed and vim.list_contains(require("ensure.config").get_plugins(), "ensure.plugin.mason")
+    self.is_enabled = self.is_installed
+        and vim.list_contains(require("ensure.config").get_plugins(), "ensure.plugin.mason")
 
-    self:install()
+    if self.is_enabled then
+        local Registry = require("mason-registry")
+        local packages = vim.tbl_filter(function(p)
+            return type(p) == string and not (vim.list_contains(self.ignore, p) or Registry.is_installed(p))
+        end, self.packages)
+
+        if #packages > 0 then
+            notify("Installing [Mason] packages...")
+            self:install_packages(packages)
+        end
+    end
 end
 
 ---Packages which installation failed (avoid trying to install them multiple times)
@@ -128,20 +136,42 @@ function M:install_package(pkg, version, callback)
     )
 end
 
+function M:autoinstall(ft)
+    if self.is_enabled then
+        local Registry = require("mason-registry")
+        local packages = {}
+        for _, package in ipairs(self.packages[ft] or {}) do
+            if not (vim.list_contains(self.ignore, package) or Registry.is_installed(package)) then
+                table.insert(packages, package)
+            end
+        end
+        if #packages > 0 then
+            notify("Installing [Mason] packages for filetype " .. ft .. "...")
+            self:install_packages(packages)
+        end
+    end
+end
+
 M.command = "packages"
 
 function M:install()
     if self.is_enabled then
         local Registry = require("mason-registry")
-        local to_install = {}
+        local packages = {}
         for _, package in pairs(self.packages) do
-            if not (vim.list_contains(self.ignore, package) or Registry.is_installed(package)) then
-                table.insert(to_install, package)
+            if type(package) == "string" then
+                table.insert(packages, package)
+            else
+                vim.list_extend(packages, package)
             end
+
+            packages = vim.tbl_filter(function(package)
+                return not (vim.list_contains(self.ignore, package) or Registry.is_installed(package))
+            end, packages)
         end
-        if #to_install > 0 then
+        if #packages > 0 then
             notify("Installing [Mason] packages...")
-            self:install_packages(to_install)
+            self:install_packages(packages)
         end
     end
 end

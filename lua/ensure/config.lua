@@ -9,7 +9,7 @@
 
 ---@class ensure.Config
 ---@field install? boolean Force installing everything on start
----@field packages? string[] List of package names to ensure are installed via mason.nvim
+---@field packages? table List of package names to ensure are installed via mason.nvim
 ---@field parsers? string[] List of treesitter parsers to ensure are installed
 ---@field linters? table<string, string[]> Linters by filetype
 ---@field formatters? table<string, string[]> Formatters by filetype
