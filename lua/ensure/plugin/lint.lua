@@ -5,6 +5,8 @@ local util = require("ensure.util")
 ---@class ensure.LintPlugin : ensure.Plugin
 local M = Plugin:new()
 
+--- TODO: refactor to use https://github.com/mfussenegger/nvim-lint/issues/891 if accepted
+
 ---Mapping from `nvim-lint` linters to Mason package names
 ---Only contains linters which name differs from mason package name
 ---See: https://mason-registry.dev/registry/list

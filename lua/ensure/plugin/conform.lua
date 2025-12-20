@@ -5,6 +5,8 @@ local util = require("ensure.util")
 ---@class ensure.ConformPlugin : ensure.Plugin
 local M = Plugin:new()
 
+--- TODO: refactor to use https://github.com/stevearc/conform.nvim/issues/836 if accepted
+
 ---Mapper from conform formatter names to mason package names
 ---Only contains formatters which name differs from mason package name
 ---See: https://mason-registry.dev/registry/list
