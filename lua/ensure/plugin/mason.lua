@@ -1,5 +1,6 @@
 local Plugin = require("ensure.plugin")
 local notify = require("ensure.notify")
+local util = require("ensure.util")
 
 ---@class ensure.MasonPlugin : ensure.Plugin
 local M = Plugin:new()
@@ -137,7 +138,7 @@ function M:autoinstall(ft)
     if self.is_enabled then
         local Registry = require("mason-registry")
         local packages = {}
-        for _, package in ipairs(self.packages[ft] or {}) do
+        for _, package in ipairs(util.string_list(self.packages[ft] or {})) do
             if not (vim.list_contains(self.ignore, package) or Registry.is_installed(package)) then
                 table.insert(packages, package)
             end
@@ -159,8 +160,8 @@ function M:install()
                 vim.list_extend(packages, package)
             end
 
-            packages = vim.tbl_filter(function(package)
-                return not (vim.list_contains(self.ignore, package) or Registry.is_installed(package))
+            packages = vim.tbl_filter(function(p)
+                return not (vim.list_contains(self.ignore, p) or Registry.is_installed(p))
             end, packages)
         end
         self:install_packages(packages)

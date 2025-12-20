@@ -128,6 +128,21 @@ By default, the following list will be merged (aka. not need to declare them as 
 - `parsers`
 - `plugins`
 
+> [!TIP]
+> All filetypes entries support both a list of strings or a single string.
+>
+> ```lua
+> {
+>     "noirbizarre/ensure.nvim",
+>     opts = {
+>         packages = { ft = "package-for-filetype" },
+>         formatters = { ft = "formatter" },
+>         linters = { ft = "linters" },
+>     },
+> }
+> 
+> ```
+
 ### Install with the `Ensure` command
 
 You can install all packages and parser with the `Ensure` command.

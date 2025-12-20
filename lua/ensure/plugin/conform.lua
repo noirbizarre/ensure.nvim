@@ -1,6 +1,6 @@
 local Plugin = require("ensure.plugin")
 local mason = require("ensure.plugin.mason")
-local notify = require("ensure.notify")
+local util = require("ensure.util")
 
 ---@class ensure.ConformPlugin : ensure.Plugin
 local M = Plugin:new()
@@ -39,7 +39,7 @@ function M:setup(opts)
 
     local conform = require("conform")
     for ft, formatters in pairs(opts.formatters) do
-        conform.formatters_by_ft[ft] = formatters
+        conform.formatters_by_ft[ft] = util.string_list(formatters)
     end
 end
 

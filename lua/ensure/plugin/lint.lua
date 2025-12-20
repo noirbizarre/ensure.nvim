@@ -1,6 +1,6 @@
 local Plugin = require("ensure.plugin")
 local mason = require("ensure.plugin.mason")
-local notify = require("ensure.notify")
+local util = require("ensure.util")
 
 ---@class ensure.LintPlugin : ensure.Plugin
 local M = Plugin:new()
@@ -26,7 +26,7 @@ function M:setup(opts)
     if self.is_installed then
         local lint = require("lint")
         for ft, linters in pairs(opts.linters) do
-            lint.linters_by_ft[ft] = linters
+            lint.linters_by_ft[ft] = util.string_list(linters)
         end
     end
 end
