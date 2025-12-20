@@ -1,21 +1,20 @@
 ---@class LspConfig: {[string]: table}
----@field enable? string[] List of LSP server names to ensure are installed via mason.nvim and enabled
----@field disable? string[] List of LSP server names to ensure are not enabled (allow by-project disabling)
----@field config? table<string, table> LSP server configurations
+---@field enable string[] List of LSP server names to ensure are installed via mason.nvim and enabled
+---@field disable string[] List of LSP server names to ensure are not enabled (allow by-project disabling)
 
 ---@class IgnoreConfig
----@field packages? string[] List of package names to ignore when ensuring installation via mason.nvim
----@field parsers? string[] List of treesitter parsers to ignore when ensuring installation
+---@field packages string[] List of package names to ignore when ensuring installation via mason.nvim
+---@field parsers string[] List of treesitter parsers to ignore when ensuring installation
 
 ---@class ensure.Config
----@field install? boolean Force installing everything on start
----@field packages? table List of package names to ensure are installed via mason.nvim
----@field parsers? string[] List of treesitter parsers to ensure are installed
----@field linters? table<string, string[]> Linters by filetype
----@field formatters? table<string, string[]> Formatters by filetype
----@field lsp? LspConfig Configuration for LSP servers
----@field ignore? IgnoreConfig Configuration for ignoring certain packages or parsers
----@field plugins? string[] List of plugin to load
+---@field install boolean Force installing everything on start
+---@field packages table List of package names to ensure are installed via mason.nvim
+---@field parsers string[] List of treesitter parsers to ensure are installed
+---@field linters table<string, string[]> Linters by filetype
+---@field formatters table<string, string[]> Formatters by filetype
+---@field lsp LspConfig Configuration for LSP servers
+---@field ignore IgnoreConfig Configuration for ignoring certain packages or parsers
+---@field plugins string[] List of plugin to load
 
 ---@type ensure.Config
 local defaults = {
