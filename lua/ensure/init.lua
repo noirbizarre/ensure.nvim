@@ -1,6 +1,8 @@
 local M = {}
 
----@param opts ensure.Config
+---@class (partial) ensure.SetupOpts : ensure.Config
+
+---@param opts ensure.SetupOpts
 function M.setup(opts)
     local config = require("ensure.config").setup(opts)
     for _, name in pairs(config.plugins) do
