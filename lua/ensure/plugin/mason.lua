@@ -132,9 +132,10 @@ M.command = "packages"
 
 function M:install()
     if self.is_enabled then
+        local Registry = require("mason-registry")
         local to_install = {}
         for _, package in pairs(self.packages) do
-            if not vim.list_contains(self.ignore, package) then
+            if not (vim.list_contains(self.ignore, package) or Registry.is_installed(package)) then
                 table.insert(to_install, package)
             end
         end
