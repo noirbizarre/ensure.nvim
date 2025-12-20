@@ -247,7 +247,9 @@ Here's a summary of the available plugins features:
 
 I wanted a simple way to declaratively ensure that my mason dependencies, tree-sitter parsers and LSP servers are installed and configured without having to write boilerplate code in each of my `lazy.nvim` spec modules.
 
-Plus, with the Mason 2.0 API, the Neovim 0.11 `vim.lsp` API and the `nvim-treesitter` new API, most plugins I used were broken, and we now have all the required API to make this work seamlessly.
+Plus, with the Mason 2.0 API, the Neovim 0.11 `vim.lsp` API and the `nvim-treesitter` new API, most plugins I used were broken (https://github.com/mason-org/mason-lspconfig.nvim/issues/535, https://github.com/mason-org/mason-lspconfig.nvim/issues/606) or archived (https://github.com/zapling/mason-conform.nvim).
+
+We now have all the required API to make this work seamlessly so I decided to create this plugin.
 
 ### Is `lazy.nvim` required ?
 
