@@ -16,9 +16,13 @@ M.mapping = {
     buf_lint = "buf",
     cfn_lint = "cfn-lint",
     clj_kondo = "clj-kondo",
+    cmake_lint = "cmakelang",
+    dotenv_linter = "dotenv-linter",
     erb_lint = "erb-lint",
     gdlint = "gdtoolkit",
     golangcilint = "golangci-lint",
+    mh_lint = "miss_hit",
+    opa_check = "opa",
     snyk_iac = "snyk",
     write_good = "write-good",
 }
