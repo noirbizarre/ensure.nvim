@@ -21,7 +21,9 @@ function M:setup(opts)
             table.insert(to_enable, lsp)
         end
     end
-    vim.lsp.enable(to_enable)
+    if #to_enable > 0 then
+        vim.lsp.enable(to_enable)
+    end
 
     for name, config in pairs(opts.lsp) do
         if not vim.list_contains(CONFIG_KEYS, name) then
