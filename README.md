@@ -71,13 +71,18 @@ Default configuration is empty and just load all provided plugins:
 }
 ```
 
+> [!NOTE]
+> If you already have Mason, LSP, Treesitter, Conform or Lint configured in your Neovim setup, and just want automatic download you don't need configuration.
+> By default, `ensure.nvim` will automatically download enabled LSP servers, formatters, linters and Treesitter parsers for each buffer open.
+
+
 ## Usage
 
 First, don't forget to run `:checkhealth ensure` to verify that all dependencies are installed and configured properly.
 
 ### Declarative base
 
-First purpose of `ensure.nvim` is to provide a declarative way to ensure that certain dependencies are installed and configured.
+One purpose of `ensure.nvim` is to provide a declarative way to ensure that certain dependencies are installed and configured.
 
 The plugin declaratively ensures that the specified Mason packages are installed, tree-sitter parsers are set up, and LSP servers configured.
 
