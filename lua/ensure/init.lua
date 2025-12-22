@@ -24,7 +24,7 @@ function M.setup(opts)
         bang = true,
     })
 
-    if opts.install then
+    if config.install then
         M.install()
     end
 end
