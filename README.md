@@ -279,11 +279,13 @@ Also note that those features might be exclusive to `lazy.nvim`:
 
 The `Ensure` command as well as on demand installation of missing parsers/formatters/linters should work fine without `lazy.nvim`.
 
-### Why isn't there any tests
+### Running tests
 
-This plugin started as a personal project to simplify my own Neovim configuration.
-I use it daily, and it works well for my use case.
-I plan to add tests in the future, but for now, I rely on my own usage to ensure its functionality.
+This plugin includes a small busted test suite.
+
+  ```bash
+  tests/minit.lua tests
+  ```
 
 ## Acknowledgements
 
