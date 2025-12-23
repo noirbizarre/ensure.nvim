@@ -1,6 +1,7 @@
 # 📦 `ensure.nvim`
 
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/noirbizarre/ensure.nvim/main.svg)](https://results.pre-commit.ci/latest/github/noirbizarre/ensure.nvim/main)
+[![CI](https://github.com/noirbizarre/ensure.nvim/actions/workflows/ci.yaml/badge.svg)](https://github.com/noirbizarre/ensure.nvim/actions/workflows/ci.yaml)
 
 Help to modularize `lazy.nvim` based config by providing:
 
