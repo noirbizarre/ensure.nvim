@@ -1,5 +1,7 @@
 # 📦 `ensure.nvim`
 
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/noirbizarre/ensure.nvim/main.svg)](https://results.pre-commit.ci/latest/github/noirbizarre/ensure.nvim/main)
+
 Help to modularize `lazy.nvim` based config by providing:
 
 - A simple way to ensure Mason dependencies are installed
