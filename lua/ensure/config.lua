@@ -1,4 +1,4 @@
----@class LspConfig: {[string]: table}
+---@class LspConfig: {[string]: table|function}
 ---@field enable string[] List of LSP server names to ensure are installed via mason.nvim and enabled
 ---@field disable string[] List of LSP server names to ensure are not enabled (allow by-project disabling)
 
@@ -10,8 +10,8 @@
 ---@field install boolean Force installing everything on start
 ---@field packages table List of package names to ensure are installed via mason.nvim
 ---@field parsers string[] List of treesitter parsers to ensure are installed
----@field linters table<string, string[]> Linters by filetype
----@field formatters table<string, string[]> Formatters by filetype
+---@field linters table<string, string|string[]> Linters by filetype
+---@field formatters table<string, string|string[]> Formatters by filetype
 ---@field lsp LspConfig Configuration for LSP servers
 ---@field ignore IgnoreConfig Configuration for ignoring certain packages or parsers
 ---@field plugins string[] List of plugin to load
