@@ -1,6 +1,10 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
+  - repo: meta
+    hooks:
+      - id: check-useless-excludes
+
   - repo: 'https://github.com/pre-commit/pre-commit-hooks'
     rev: v6.0.0
     hooks:
@@ -8,8 +12,29 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
       - id: check-added-large-files
+      - id: debug-statements
+      - id: detect-private-key
+      - id: check-merge-conflict
 
   - repo: https://github.com/JohnnyMorganz/StyLua
     rev: v2.3.1
     hooks:
       - id: stylua-github
+
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.36.0
+    hooks:
+      - id: check-github-workflows
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.1
+    hooks:
+    - id: codespell
+      args: ["--write-changes"]
+
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.20.0
+    hooks:
+    - id: markdownlint-cli2
+      args: ["--fix"]
+      additional_dependencies: [markdownlint-cli2-formatter-pretty]

@@ -1,0 +1,51 @@
+---
+config:
+  # Enable all rules
+  default: true
+
+  # Enforce dash for unordered lists
+  # See: https://github.com/DavidAnson/markdownlint/blob/main/doc/md004.md
+  MD004:
+    style: dash
+
+  # Set list indent level to 2
+  # See:
+  #  - https://github.com/DavidAnson/markdownlint/blob/main/doc/md007.md
+  MD007:
+    indent: 2
+
+  # Disable `line-length`
+  # See: https://github.com/DavidAnson/markdownlint/blob/main/doc/md013.md
+  MD013: false
+
+  # Disable `no-blancks-blockquote` (false positive with some consecutive alerts)
+  # See: https://github.com/DavidAnson/markdownlint/blob/main/doc/md028.md
+  MD028: false
+
+  # Disable `blanks-around-list` (to stay close from GitHub-flavored markdown)
+  # See:
+  #  - https://github.com/DavidAnson/markdownlint/blob/main/doc/md032.md
+  #  - https://python-markdown.github.io/#differences
+  MD032: false
+
+  # Allow inline HTML
+  # See: https://github.com/DavidAnson/markdownlint/blob/main/doc/md033.md
+  MD033: false
+
+  # Disable `no-space-in-code`
+  # Generate lots of false positive with admonitions and code blocks
+  # See: https://github.com/DavidAnson/markdownlint/blob/main/doc/md038.md
+  MD038: false
+
+  # Disable `code-blocks-style`
+  # Use fenced code blocks everywhere but raise false positives with admonitions
+  # See: https://github.com/DavidAnson/markdownlint/blob/main/doc/md046.md
+  MD046: false
+
+fix: true
+noBanner: true
+noProgress: true
+showFound: false
+
+outputFormatters:
+  - [markdownlint-cli2-formatter-pretty]
