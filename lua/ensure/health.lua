@@ -1,9 +1,9 @@
 local M = {}
 
 M.check = function()
-	vim.health.start("ensure")
+    vim.health.start("ensure")
 
-	local has_lazy, _ = pcall(require, "lazy")
+    local has_lazy, _ = pcall(require, "lazy")
     if has_lazy then
         vim.health.ok("`lazy.nvim` is installed")
     else

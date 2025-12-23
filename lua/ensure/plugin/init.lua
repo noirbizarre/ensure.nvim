@@ -18,7 +18,6 @@ function Plugin:autoinstall(ft) end
 ---@type string?
 Plugin.command = nil
 
-
 ---Install declared packages/dependencies
 ---@param opts? ensure.CommandOpts
 ---@diagnostic disable-next-line: unused-local

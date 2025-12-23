@@ -7,7 +7,7 @@ local notify = require("ensure.notify")
 ---@param opts vim.api.keyset.create_user_command.command_args
 return function(opts)
     ---@type ensure.CommandOpts
-    local params = {all = opts.bang}
+    local params = { all = opts.bang }
 
     if #opts.fargs == 0 then
         require("ensure").install(params)
