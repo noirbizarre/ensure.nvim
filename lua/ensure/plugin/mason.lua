@@ -15,7 +15,7 @@ function M:setup(opts)
     if self.is_enabled then
         local Registry = require("mason-registry")
         local packages = vim.tbl_filter(function(p)
-            return type(p) == string and not (vim.list_contains(self.ignore, p) or Registry.is_installed(p))
+            return type(p) == "string" and not (vim.list_contains(self.ignore, p) or Registry.is_installed(p))
         end, self.packages)
 
         self:install_packages(packages)
