@@ -1,8 +1,6 @@
 local M = {}
 
----@class (partial) ensure.SetupOpts : ensure.Config
-
----@param opts ensure.SetupOpts
+---@param opts? ensure.SetupOpts
 function M.setup(opts)
     local config = require("ensure.config").setup(opts)
     for _, name in pairs(config.plugins) do
@@ -11,7 +9,7 @@ function M.setup(opts)
     end
     require("ensure.command")
 
-    vim.api.nvim_create_autocmd({"BufNewFile", "BufRead"}, {
+    vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
         group = vim.api.nvim_create_augroup("ensure", {}),
         pattern = "*",
         callback = M.autoinstall,

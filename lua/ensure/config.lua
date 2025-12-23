@@ -16,21 +16,23 @@
 ---@field ignore IgnoreConfig Configuration for ignoring certain packages or parsers
 ---@field plugins string[] List of plugin to load
 
+---@class (partial) ensure.SetupOpts : ensure.Config
+
 ---@type ensure.Config
 local defaults = {
     install = false,
-	packages = {},
-	parsers = {},
+    packages = {},
+    parsers = {},
     formatters = {},
     linters = {},
-	lsp = {
-		enable = {},
-		disable = {},
-	},
-	ignore = {
-		packages = {},
-		parsers = {},
-	},
+    lsp = {
+        enable = {},
+        disable = {},
+    },
+    ignore = {
+        packages = {},
+        parsers = {},
+    },
     plugins = {
         "ensure.plugin.mason",
         "ensure.plugin.lsp",
@@ -44,11 +46,11 @@ local config = vim.deepcopy(defaults) --[[@as ensure.Config]]
 
 local M = {}
 
----@param opts? ensure.Config
+---@param opts? ensure.SetupOpts
 ---@return ensure.Config
 function M.setup(opts)
-	config = vim.tbl_deep_extend("force", {}, vim.deepcopy(defaults), opts or {})
-	return config
+    config = vim.tbl_deep_extend("force", {}, vim.deepcopy(defaults), opts or {})
+    return config
 end
 
 ---Give the list of enabled plugins
