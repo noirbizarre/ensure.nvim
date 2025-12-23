@@ -1,7 +1,31 @@
+require("tests.matchers")
+
 local M = {}
 
 local clean_functions = {}
 local revertables = {}
+
+---Mock `require()` to simulate missing modules
+---@@param ... module names to mock as missing
+function M.modules_not_found(...)
+    local original_require = require
+    local missing = {}
+    for i = 1, select("#", ...) do
+        local mod = select(i, ...)
+        missing[mod] = true
+    end
+
+    _G.require = function(name)
+        if missing[name] then
+            error("module not found")
+        end
+        return original_require(name)
+    end
+
+    table.insert(clean_functions, function()
+        _G.require = original_require
+    end)
+end
 
 ---Create a stub that will be reverted on teardown
 ---@param object table The object to stub

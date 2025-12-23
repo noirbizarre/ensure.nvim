@@ -1,6 +1,6 @@
 local helpers = require("tests.helpers")
 
-describe("ensure.health", function()
+describe("ensure.health #health", function()
     before_each(function()
         helpers.mock(vim.health, true)
     end)
@@ -22,18 +22,7 @@ describe("ensure.health", function()
     end)
 
     it("warns when lazy is not installed", function()
-        local original_require = require
-
-        _G.require = function(name)
-            if name == "lazy" then
-                error("module not found")
-            end
-            return original_require(name)
-        end
-        finally(function()
-            _G.require = original_require
-        end)
-
+        helpers.modules_not_found("lazy")
         helpers.stub(config, "get_plugins", {})
 
         health.check()

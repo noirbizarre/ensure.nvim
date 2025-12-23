@@ -33,15 +33,12 @@ describe("ensure.init", function()
 
         ensure.setup({})
 
-        assert.stub(vim.api.nvim_create_autocmd).was_called_with({ "BufNewFile", "BufRead" }, match.is_table())
-        local opts = vim.api.nvim_create_autocmd.calls[#vim.api.nvim_create_autocmd.calls].vals[2]
-        assert.is.equal(opts.pattern, "*")
-        assert.is_function(opts.callback)
-
-        assert.stub(vim.api.nvim_create_user_command).was_called_with("Ensure", match.is_function(), match.is_table())
-        opts = vim.api.nvim_create_user_command.calls[#vim.api.nvim_create_user_command.calls].vals[3]
-        assert.is.equal(opts.nargs, "?")
-        assert.is_true(opts.bang)
+        assert
+            .stub(vim.api.nvim_create_autocmd)
+            .was_called_with({ "BufNewFile", "BufRead" }, match.table_with({ pattern = "*", callback = ensure.autoinstall }))
+        assert
+            .stub(vim.api.nvim_create_user_command)
+            .was_called_with("Ensure", match.is_function(), match.table_with({ nargs = "?", bang = true }))
     end)
 
     it("calls install when opts.install is true", function()
