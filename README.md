@@ -137,7 +137,7 @@ By default, the following list will be merged (aka. not need to declare them as 
 >         linters = { ft = "linters" },
 >     },
 > }
-> 
+>
 > ```
 
 ### Install with the `Ensure` command

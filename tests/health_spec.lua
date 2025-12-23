@@ -33,7 +33,7 @@ describe("ensure.health", function()
         finally(function()
             _G.require = original_require
         end)
-        
+
         helpers.stub(config, "get_plugins", {})
 
         health.check()

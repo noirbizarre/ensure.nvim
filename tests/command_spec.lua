@@ -33,8 +33,8 @@ describe("ensure.command", function()
 
     it("dispatches to plugin subcommand when known", function()
         helpers.stub(config, "get_plugins", { "plugin.one", "plugin.two" })
-        local plugin1 = helpers.plugin("plugin.one", {command = "plugin1"})
-        local plugin2 = helpers.plugin("plugin.two", {command = "plugin2"})
+        local plugin1 = helpers.plugin("plugin.one", { command = "plugin1" })
+        local plugin2 = helpers.plugin("plugin.two", { command = "plugin2" })
 
         command({ bang = true, fargs = { "plugin1" } })
 
@@ -44,7 +44,7 @@ describe("ensure.command", function()
 
     it("notifies on unknown subcommand", function()
         helpers.stub(config, "get_plugins", { "plugin" })
-        local plugin = helpers.plugin("plugin", {command = "known"})
+        local plugin = helpers.plugin("plugin", { command = "known" })
 
         command({ bang = false, fargs = { "unknown" } })
 
