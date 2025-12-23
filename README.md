@@ -77,7 +77,6 @@ Default configuration is empty and just load all provided plugins:
 > If you already have Mason, LSP, Treesitter, Conform or Lint configured in your Neovim setup, and just want automatic download you don't need configuration.
 > By default, `ensure.nvim` will automatically download enabled LSP servers, formatters, linters and Treesitter parsers for each buffer open.
 
-
 ## Usage
 
 First, don't forget to run `:checkhealth ensure` to verify that all dependencies are installed and configured properly.
@@ -158,6 +157,7 @@ With the built-in plugins, it will install:
 
 > [!NOTE]
 > You can also do it programmatically with:
+>
 > ```lua
 > require('ensure').install()
 > ```
@@ -172,6 +172,7 @@ The bang version `Ensure!` will install:
 
 > [!NOTE]
 > You can also do it programmatically with:
+>
 > ```lua
 > require('ensure').install({all = true})
 > ```
@@ -187,7 +188,6 @@ You can also call the `Ensure` and `Ensure!` commands with a specific plugin nam
 - `Ensure linters` to only install `nvim-lint` linters
 
 ### Asynchronous on-demand loading
-
 
 Depending on the enabled plugins, `ensure.nvim` will automatically install missing requirements when loading a file:
 
@@ -254,7 +254,7 @@ Here's a summary of the available plugins features:
 
 I wanted a simple way to declaratively ensure that my mason dependencies, tree-sitter parsers and LSP servers are installed and configured without having to write boilerplate code in each of my `lazy.nvim` spec modules.
 
-Plus, with the Mason 2.0 API, the Neovim 0.11 `vim.lsp` API and the `nvim-treesitter` new API, most plugins I used were broken (https://github.com/mason-org/mason-lspconfig.nvim/issues/535, https://github.com/mason-org/mason-lspconfig.nvim/issues/606) or archived (https://github.com/zapling/mason-conform.nvim).
+Plus, with the Mason 2.0 API, the Neovim 0.11 `vim.lsp` API and the `nvim-treesitter` new API, most plugins I used were broken (<https://github.com/mason-org/mason-lspconfig.nvim/issues/535>, <https://github.com/mason-org/mason-lspconfig.nvim/issues/606>) or archived (<https://github.com/zapling/mason-conform.nvim>).
 
 We now have all the required API to make this work seamlessly so I decided to create this plugin.
 
@@ -272,7 +272,6 @@ You need to make sure that the dependencies are loaded before `ensure.nvim` is l
 - `nvim-treesitter/nvim-treesitter` for the treesitter plugin
 - `stevearc/conform.nvim` for the conform plugin
 - `mfussenegger/nvim-lint` for the lint plugin
-
 
 Also note that those features might be exclusive to `lazy.nvim`:
 
