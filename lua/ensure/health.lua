@@ -7,7 +7,7 @@ M.check = function()
     if has_lazy then
         vim.health.ok("`lazy.nvim` is installed")
     else
-        vim.health.warning("`lazy.nvim` is not installed, `opts` merging not available")
+        vim.health.warn("`lazy.nvim` is not installed, `opts` merging not available")
     end
 
     local plugins = require("ensure.config").get_plugins()
