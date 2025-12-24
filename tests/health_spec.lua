@@ -1,6 +1,6 @@
 local helpers = require("tests.helpers")
 
-describe("ensure.health #health", function()
+describe("ensure.health", function()
     before_each(function()
         helpers.mock(vim.health, true)
     end)

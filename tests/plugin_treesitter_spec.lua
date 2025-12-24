@@ -10,87 +10,135 @@ describe("ensure.plugin.treesitter", function()
         helpers.teardown()
     end)
 
-    local ts_plugin = require("ensure.plugin.treesitter")
-
-    local function stub_ts()
-        local ts = {
-            get_available = function(mode)
-                if mode == 1 then
-                    return { "lua" }
-                elseif mode == 2 then
-                    return { "python" }
-                else
-                    return { "lua", "python", "rust" }
-                end
-            end,
-            get_installed = function()
-                return { "lua" }
-            end,
-            install = function() end,
-        }
-        package.loaded["nvim-treesitter"] = ts
-        return ts
-    end
+    local ts = require("nvim-treesitter")
+    local plugin = require("ensure.plugin.treesitter")
 
     it("setup stores parsers/ignore and triggers install when nvim-treesitter is available", function()
-        local ts = stub_ts()
         helpers.stub(ts, "install")
 
-        ts_plugin:setup({
+        ---@diagnostic disable-next-line: missing-fields
+        plugin:setup({
             parsers = { "lua", "rust" },
+            ---@diagnostic disable-next-line: missing-fields
             ignore = { parsers = { "rust" } },
         })
 
-        assert.is_true(ts_plugin.is_installed)
-        assert.same({ "lua", "rust" }, ts_plugin.parsers)
-        assert.same({ "rust" }, ts_plugin.ignore)
+        assert.is_true(plugin.is_installed)
+        assert.same({ "lua", "rust" }, plugin.parsers)
+        assert.same({ "rust" }, plugin.ignore)
 
-        assert.stub(ts.install).was_called()
+        assert.stub(ts.install).was_called_with({ "lua" })
     end)
 
     it("health reports missing nvim-treesitter", function()
-        ts_plugin.is_installed = false
+        plugin.is_installed = false
 
-        ts_plugin:health()
+        plugin:health()
 
         assert.stub(vim.health.error).was_called_with("`nvim-treesitter` is not installed")
     end)
 
-    it("autoinstall installs parser for current filetype when available and not ignored", function()
-        local ts = stub_ts()
+    it("autoinstalls parser for current filetype when available and not ignored", function()
         helpers.stub(ts, "install")
 
-        ts_plugin.is_installed = true
-        ts_plugin.ignore = { "rust" }
+        plugin.is_installed = true
+        plugin.ignore = { "rust" }
 
-        ts_plugin:autoinstall("python")
+        plugin:autoinstall("python")
         assert.stub(ts.install).was_called_with({ "python" })
 
-        ts.install:revert()
-        helpers.stub(ts, "install")
-        ts_plugin:autoinstall("rust")
+        ts.install:clear()
+        plugin:autoinstall("rust")
         assert.stub(ts.install).was_not_called()
     end)
 
-    it("install installs missing, non-ignored parsers; all=true uses available list", function()
-        local ts = stub_ts()
+    it("installs missing, non-ignored parsers", function()
         helpers.stub(ts, "install")
 
-        ts_plugin.is_installed = true
-        ts_plugin.parsers = { "lua", "python", "rust" }
-        ts_plugin.ignore = { "rust" }
+        plugin.is_installed = true
+        plugin.parsers = { "lua", "python", "rust" }
+        plugin.ignore = { "rust" }
 
-        ts_plugin:install()
+        plugin:install()
 
-        assert.stub(ts.install).was_called_with({ "python" })
+        assert.stub(ts.install).was_called_with({ "lua", "python" })
+    end)
 
-        ts.install:revert()
+    it("installs all available parser with all=true and respect ignore", function()
+        plugin.is_installed = true
+        plugin.ignore = { "rust" }
+
+        helpers.stub(ts, "install")
+        helpers.stub(ts, "get_available", function(tier)
+            if tier == 1 then
+                return { "python", "rust" }
+            elseif tier == 2 then
+                return { "go" }
+            elseif tier >= 3 then
+                return { "typescript" }
+            else
+                return { "python", "go", "rust", "typescript" }
+            end
+        end)
+
+        plugin:install({ all = true })
+
+        assert.stub(ts.install).was_called_with({ "python", "go" })
+    end)
+
+    it("health reports nvim-treesitter installed with main branch", function()
+        plugin.is_installed = true
+
+        plugin:health()
+
+        assert.stub(vim.health.ok).was_called_with("`nvim-treesitter` is installed")
+        assert.stub(vim.health.ok).was_called_with("Using `main` branch of `nvim-treesitter`")
+    end)
+
+    it("health errors when using master branch of nvim-treesitter", function()
+        plugin.is_installed = true
+        local original_install = ts.install
+        ts.install = nil
+        finally(function()
+            ts.install = original_install
+        end)
+
+        plugin:health()
+
+        assert.stub(vim.health.ok).was_called_with("`nvim-treesitter` is installed")
+        assert
+            .stub(vim.health.error)
+            .was_called_with("Using `master` branch of `nvim-treesitter`, `main` branch is required")
+    end)
+
+    it("setup does nothing when nvim-treesitter is not installed", function()
+        helpers.modules_not_found("nvim-treesitter")
+
+        ---@diagnostic disable-next-line: missing-fields
+        plugin:setup({
+            parsers = { "lua" },
+            ---@diagnostic disable-next-line: missing-fields
+            ignore = { parsers = {} },
+        })
+
+        assert.is_false(plugin.is_installed)
+    end)
+
+    it("autoinstall does nothing when nvim-treesitter is not installed", function()
+        plugin.is_installed = false
         helpers.stub(ts, "install")
 
-        ts_plugin.parsers = nil
-        ts_plugin.ignore = {}
-        ts_plugin:install({ all = true })
+        plugin:autoinstall("lua")
 
-        assert.stub(ts.install).was_called_with({ "python" })
+        assert.stub(ts.install).was_not_called()
+    end)
+
+    it("install does nothing when nvim-treesitter is not installed", function()
+        plugin.is_installed = false
+        helpers.stub(ts, "install")
+
+        plugin:install()
+
+        assert.stub(ts.install).was_not_called()
     end)
 end)

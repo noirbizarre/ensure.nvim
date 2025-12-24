@@ -1,6 +1,6 @@
 local helpers = require("tests.helpers")
 
-describe("ensure.plugin.lint #lint", function()
+describe("ensure.plugin.lint", function()
     before_each(function()
         helpers.mock(vim.health, true)
     end)
@@ -46,7 +46,7 @@ describe("ensure.plugin.lint #lint", function()
         assert.is.same(lint.linters_by_ft, {})
     end)
 
-    it("health reports install state and mason plugin enabled/disabled #health", function()
+    it("health reports install state and mason plugin enabled/disabled", function()
         mason.is_enabled = true
         plugin.is_installed = true
 
@@ -92,6 +92,57 @@ describe("ensure.plugin.lint #lint", function()
         assert
             .stub(mason.install_packages)
             .was_called_with(match.ref(mason), match.table_with({ "miss_hit", "buf", "foo" }))
-        -- assert.stub(mason.install_packages).was_called_with(match.ref(mason), { "miss_hit", "buf", "foo" })
+    end)
+
+    it("health errors when nvim-lint not installed", function()
+        plugin.is_installed = false
+        mason.is_enabled = true
+
+        plugin:health()
+
+        assert.stub(vim.health.error).was_called_with("`nvim-lint` is not installed")
+    end)
+
+    it("autoinstall does nothing when lint not installed", function()
+        plugin.is_installed = false
+        mason.is_enabled = true
+        helpers.stub(mason, "install_packages")
+
+        plugin:autoinstall("lua")
+
+        assert.stub(mason.install_packages).was_not_called()
+    end)
+
+    it("autoinstall does nothing when mason not enabled", function()
+        plugin.is_installed = true
+        mason.is_enabled = false
+        helpers.stub(mason, "install_packages")
+
+        plugin:autoinstall("lua")
+
+        assert.stub(mason.install_packages).was_not_called()
+    end)
+
+    it("install does nothing when lint not installed", function()
+        plugin.is_installed = false
+        mason.is_enabled = true
+        helpers.stub(mason, "install_packages")
+
+        plugin:install()
+
+        assert.stub(mason.install_packages).was_not_called()
+    end)
+
+    it("install does nothing when mason not enabled", function()
+        local lint = require("lint")
+        lint.linters_by_ft = { lua = { "selene" } }
+
+        plugin.is_installed = true
+        mason.is_enabled = false
+        helpers.stub(mason, "install_packages")
+
+        plugin:install()
+
+        assert.stub(mason.install_packages).was_not_called()
     end)
 end)
