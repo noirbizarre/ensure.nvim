@@ -13,25 +13,25 @@ Help to modularize `lazy.nvim` based config by providing:
 ## Installation
 
 ```lua
-    {
-        "noirbizarre/ensure.nvim",
-    }
+{
+    "noirbizarre/ensure.nvim",
+}
 ```
 
 All dependencies are optional as `ensure.nvim` will detect installed plugin.
 But you can explicitly declare them to make sure they are installed:
 
 ```lua
-    {
-        "noirbizarre/ensure.nvim",
-        dependencies = {
-            "mason-org/mason.nvim",
-            "neovim/nvim-lspconfig",
-            "nvim-treesitter/nvim-treesitter",
-            "stevearc/conform.nvim",
-            "mfussenegger/nvim-lint",
-        },
-    }
+{
+    "noirbizarre/ensure.nvim",
+    dependencies = {
+        "mason-org/mason.nvim",
+        "neovim/nvim-lspconfig",
+        "nvim-treesitter/nvim-treesitter",
+        "stevearc/conform.nvim",
+        "mfussenegger/nvim-lint",
+    },
+}
 ```
 
 This plugin is lazy-loaded by default.
