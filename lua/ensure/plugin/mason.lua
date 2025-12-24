@@ -5,6 +5,10 @@ local util = require("ensure.util")
 ---@class ensure.MasonPlugin : ensure.Plugin
 local M = Plugin:new()
 
+---Cached mapping from tool/executable names to Mason package names
+---@type table<string, string>|nil
+M._tool_to_package = nil
+
 function M:setup(opts)
     self.packages = opts.packages
     self.ignore = opts.ignore.packages
@@ -166,6 +170,39 @@ function M:install()
         end
         self:install_packages(packages)
     end
+end
+
+---Build a mapping from tool/executable names to Mason package names
+---Uses the `bin` field from Mason package specs
+---@return table<string, string>
+function M:build_tool_mapping()
+    if self._tool_to_package then
+        return self._tool_to_package
+    end
+
+    self._tool_to_package = {}
+
+    local Registry = require("mason-registry")
+    local specs = Registry.get_all_package_specs()
+
+    for _, spec in ipairs(specs) do
+        if spec.bin then
+            for tool_name, _ in pairs(spec.bin) do
+                self._tool_to_package[tool_name] = spec.name
+            end
+        end
+    end
+
+    return self._tool_to_package
+end
+
+---Resolve a tool name to a Mason package name
+---Returns nil if the tool is not found in Mason registry
+---@param tool_name string The tool/executable name
+---@return string|nil
+function M:resolve_tool(tool_name)
+    local mapping = self:build_tool_mapping()
+    return mapping[tool_name]
 end
 
 return M

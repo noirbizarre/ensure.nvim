@@ -5,27 +5,56 @@ local util = require("ensure.util")
 ---@class ensure.LintPlugin : ensure.Plugin
 local M = Plugin:new()
 
---- TODO: refactor to use https://github.com/mfussenegger/nvim-lint/issues/891 if accepted
+---Resolve a linter name to a Mason package name
+---Uses the linter's command to find the corresponding Mason package
+---Returns nil if the linter is already available or not found in Mason
+---@param linter_name string The nvim-lint linter name
+---@return string|nil The Mason package name, or nil if not needed/found
+function M:resolve_package(linter_name)
+    if not mason.is_enabled then
+        return nil
+    end
 
----Mapping from `nvim-lint` linters to Mason package names
----Only contains linters which name differs from mason package name
----See: https://mason-registry.dev/registry/list
----@type table<string, string>
-M.mapping = {
-    ansible_lint = "ansible-lint",
-    buf_lint = "buf",
-    cfn_lint = "cfn-lint",
-    clj_kondo = "clj-kondo",
-    cmake_lint = "cmakelang",
-    dotenv_linter = "dotenv-linter",
-    erb_lint = "erb-lint",
-    gdlint = "gdtoolkit",
-    golangcilint = "golangci-lint",
-    mh_lint = "miss_hit",
-    opa_check = "opa",
-    snyk_iac = "snyk",
-    write_good = "write-good",
-}
+    local lint = require("lint")
+    local linter = lint.linters[linter_name]
+
+    if not linter then
+        return nil
+    end
+
+    -- Handle linter as factory function
+    if type(linter) == "function" then
+        local ok, result = pcall(linter)
+        if not ok then
+            return nil
+        end
+        linter = result
+    end
+
+    local cmd = linter.cmd
+    if not cmd then
+        return nil
+    end
+
+    -- Handle cmd as function (dynamic resolution)
+    if type(cmd) == "function" then
+        local ok, result = pcall(cmd)
+        if not ok or not result then
+            return nil
+        end
+        cmd = result
+    end
+
+    -- Skip if the linter command is already executable
+    if vim.fn.executable(cmd) == 1 then
+        return nil
+    end
+
+    -- Extract executable name from command (handles full paths)
+    local exe_name = vim.fn.fnamemodify(cmd, ":t")
+
+    return mason:resolve_tool(exe_name)
+end
 
 function M:setup(opts)
     self.is_installed, _ = pcall(require, "lint")
@@ -51,30 +80,45 @@ function M:health()
 end
 
 function M:autoinstall(ft)
-    if self.is_installed and mason.is_enabled then
-        local lint = require("lint")
-        local linters = lint._resolve_linter_by_ft(ft)
-        if linters then
-            local packages = {}
-            for _, linter in ipairs(linters) do
-                table.insert(packages, M.mapping[linter] or linter)
-            end
-            mason:install_packages(packages)
+    if not self.is_installed or not mason.is_enabled then
+        return
+    end
+
+    local lint = require("lint")
+    local linters = lint._resolve_linter_by_ft(ft)
+    local packages = {}
+
+    for _, linter in ipairs(linters) do
+        local pkg = self:resolve_package(linter)
+        if pkg then
+            table.insert(packages, pkg)
         end
+    end
+    if #packages > 0 then
+        mason:install_packages(packages)
     end
 end
 
 M.command = "linters"
 
 function M:install()
-    if self.is_installed and mason.is_enabled then
-        local lint = require("lint")
-        local packages = {}
-        for _, linters in pairs(lint.linters_by_ft) do
-            for _, linter in ipairs(linters) do
-                table.insert(packages, M.mapping[linter] or linter)
+    if not self.is_installed or not mason.is_enabled then
+        return
+    end
+
+    local lint = require("lint")
+    local packages = {}
+
+    for _, linters in pairs(lint.linters_by_ft) do
+        for _, linter in ipairs(linters) do
+            local pkg = self:resolve_package(linter)
+            if pkg then
+                table.insert(packages, pkg)
             end
         end
+    end
+
+    if #packages > 0 then
         mason:install_packages(packages)
     end
 end

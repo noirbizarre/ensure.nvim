@@ -5,36 +5,34 @@ local util = require("ensure.util")
 ---@class ensure.ConformPlugin : ensure.Plugin
 local M = Plugin:new()
 
---- TODO: refactor to use https://github.com/stevearc/conform.nvim/issues/836 if accepted
+---Resolve a formatter name to a Mason package name
+---Uses the formatter's command to find the corresponding Mason package
+---Returns nil if the formatter is already available or not found in Mason
+---@param formatter_name string The conform formatter name
+---@param bufnr? integer Buffer number for context (default: current buffer)
+---@return string|nil The Mason package name, or nil if not needed/found
+function M:resolve_package(formatter_name, bufnr)
+    if not mason.is_enabled then
+        return nil
+    end
 
----Mapper from conform formatter names to mason package names
----Only contains formatters which name differs from mason package name
----See: https://mason-registry.dev/registry/list
----@type table<string, string>
-M.mapping = {
-    bsfmt = "brighterscript-formatter",
-    cmake_format = "cmakelang",
-    dcm_fix = "dcm",
-    dcm_format = "dcm",
-    deno_fmt = "deno",
-    elm_format = "elm-format",
-    erb_format = "erb-formatter",
-    gdformat = "gdtoolkit",
-    hcl = "hclfmt",
-    lua_format = "luaformatter",
-    mh_style = "miss_hit",
-    nginxfmt = "nginx-config-formatter",
-    nixpkgs_fmt = "nixpkgs-fmt",
-    nomad_fmt = "nomad",
-    opa_fmt = "opa",
-    php_cs_fixer = "php-cs-fixer",
-    ["purs-tidy"] = "purescript-tidy",
-    ruff_fix = "ruff",
-    ruff_format = "ruff",
-    ruff_organize_imports = "ruff",
-    sql_formatter = "sql-formatter",
-    terraform_fmt = "terraform",
-}
+    local conform = require("conform")
+    local info = conform.get_formatter_info(formatter_name, bufnr)
+
+    if not info or not info.command then
+        return nil
+    end
+
+    -- Skip if the formatter is already available
+    if info.available then
+        return nil
+    end
+
+    -- Extract executable name from command (handles full paths)
+    local exe_name = vim.fn.fnamemodify(info.command, ":t")
+
+    return mason:resolve_tool(exe_name)
+end
 
 function M:setup(opts)
     self.is_installed, _ = pcall(require, "conform")
@@ -62,33 +60,48 @@ function M:health()
 end
 
 function M:autoinstall(_)
-    local conform = require("conform")
+    if not self.is_installed or not mason.is_enabled then
+        return
+    end
 
-    if mason.is_enabled then
-        local formatters = conform.list_formatters_for_buffer(vim.api.nvim_get_current_buf())
-        if formatters then
-            local packages = {}
-            for _, formatter in ipairs(formatters) do
-                table.insert(packages, M.mapping[formatter] or formatter)
+    local conform = require("conform")
+    local bufnr = vim.api.nvim_get_current_buf()
+    local formatters = conform.list_formatters_for_buffer(bufnr)
+
+    if formatters then
+        local packages = {}
+        for _, formatter in ipairs(formatters) do
+            local pkg = self:resolve_package(formatter, bufnr)
+            if pkg then
+                table.insert(packages, pkg)
             end
-            mason:install_packages(packages)
         end
+        mason:install_packages(packages)
     end
 end
 
 M.command = "formatters"
 
 function M:install()
-    if self.is_installed and mason.is_enabled then
-        local conform = require("conform")
-        local packages = {}
-        local known_formatters = vim.tbl_keys(require("conform.formatters").list_all_formatters())
-        for _, info in pairs(conform.list_all_formatters()) do
-            ---Only install known linters
-            if vim.tbl_contains(known_formatters, info.name) then
-                table.insert(packages, M.mapping[info.name] or info.name)
+    if not self.is_installed or not mason.is_enabled then
+        return
+    end
+
+    local conform = require("conform")
+    local packages = {}
+    local known_formatters = vim.tbl_keys(require("conform.formatters").list_all_formatters())
+
+    for _, info in pairs(conform.list_all_formatters()) do
+        -- Only install known formatters
+        if vim.tbl_contains(known_formatters, info.name) then
+            local pkg = self:resolve_package(info.name)
+            if pkg then
+                table.insert(packages, pkg)
             end
         end
+    end
+
+    if #packages > 0 then
         mason:install_packages(packages)
     end
 end

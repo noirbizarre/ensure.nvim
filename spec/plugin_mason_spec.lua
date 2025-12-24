@@ -232,4 +232,67 @@ describe("ensure.plugin.mason #plugin #mason", function()
 
         assert.is_nil(result)
     end)
+
+    describe("tool mapping", function()
+        it("build_tool_mapping returns cached mapping on subsequent calls", function()
+            local registry = require("mason-registry")
+            helpers.stub(registry, "get_all_package_specs", {
+                { name = "stylua", bin = { stylua = "cargo:stylua" } },
+            })
+
+            plugin.is_enabled = true
+            plugin._tool_to_package = nil
+
+            local mapping1 = plugin:build_tool_mapping()
+            local mapping2 = plugin:build_tool_mapping()
+
+            assert.same(mapping1, mapping2)
+            assert.stub(registry.get_all_package_specs).was_called(1)
+        end)
+
+        it("build_tool_mapping extracts tools from package bin fields", function()
+            local registry = require("mason-registry")
+            helpers.stub(registry, "get_all_package_specs", {
+                { name = "stylua", bin = { stylua = "cargo:stylua" } },
+                {
+                    name = "cmakelang",
+                    bin = { ["cmake-format"] = "pypi:cmakelang", ["cmake-lint"] = "pypi:cmakelang" },
+                },
+                { name = "no-bin-package" }, -- Package without bin field
+            })
+
+            plugin.is_enabled = true
+            plugin._tool_to_package = nil
+
+            local mapping = plugin:build_tool_mapping()
+
+            assert.same("stylua", mapping["stylua"])
+            assert.same("cmakelang", mapping["cmake-format"])
+            assert.same("cmakelang", mapping["cmake-lint"])
+        end)
+
+        it("build_tool_mapping returns empty table when mason not enabled", function()
+            plugin.is_enabled = false
+            plugin._tool_to_package = nil
+
+            local mapping = plugin:build_tool_mapping()
+
+            assert.same({}, mapping)
+        end)
+
+        it("resolve_tool returns package name for known tool", function()
+            plugin.is_enabled = true
+            plugin._tool_to_package = { stylua = "stylua", ["cmake-format"] = "cmakelang" }
+
+            assert.same("stylua", plugin:resolve_tool("stylua"))
+            assert.same("cmakelang", plugin:resolve_tool("cmake-format"))
+        end)
+
+        it("resolve_tool returns nil for unknown tool", function()
+            plugin.is_enabled = true
+            plugin._tool_to_package = { stylua = "stylua" }
+
+            assert.is_nil(plugin:resolve_tool("unknown-tool"))
+        end)
+    end)
 end)

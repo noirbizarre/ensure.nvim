@@ -38,7 +38,7 @@ describe("ensure.plugin.conform", function()
         assert.same({ "ruff_format" }, conform.formatters_by_ft.python)
     end)
 
-    it("autoinstall maps formatters to mason packages and calls install_packages", function()
+    it("autoinstall resolves formatters to mason packages and calls install_packages", function()
         local conform = require("conform")
         helpers.stub(conform, "list_formatters_for_buffer", { "ruff_fix", "prettier" })
 
@@ -47,6 +47,12 @@ describe("ensure.plugin.conform", function()
         plugin.is_installed = true
 
         helpers.stub(vim.api, "nvim_get_current_buf", 1)
+
+        -- Mock resolve_package to return expected mappings
+        helpers.stub(plugin, "resolve_package", function(_, formatter_name)
+            local mapping = { ruff_fix = "ruff", prettier = "prettier" }
+            return mapping[formatter_name]
+        end)
 
         plugin:autoinstall("lua")
 
@@ -96,6 +102,12 @@ describe("ensure.plugin.conform", function()
         helpers.stub(mason, "install_packages")
         plugin.is_installed = true
 
+        -- Mock resolve_package to return expected mappings (nil for unknown)
+        helpers.stub(plugin, "resolve_package", function(_, formatter_name)
+            local mapping = { stylua = "stylua", ruff_format = "ruff" }
+            return mapping[formatter_name]
+        end)
+
         plugin:install()
 
         assert.stub(mason.install_packages).was_called_with(
@@ -122,5 +134,79 @@ describe("ensure.plugin.conform", function()
         plugin:install()
 
         assert.stub(mason.install_packages).was_not_called()
+    end)
+
+    describe("resolve_package", function()
+        it("returns nil when formatter is already available", function()
+            local conform = require("conform")
+            helpers.stub(conform, "get_formatter_info", {
+                name = "stylua",
+                command = "stylua",
+                available = true,
+            })
+
+            mason.is_enabled = true
+            helpers.stub(mason, "resolve_tool", "stylua")
+
+            local result = plugin:resolve_package("stylua")
+
+            assert.is_nil(result)
+            assert.stub(mason.resolve_tool).was_not_called()
+        end)
+
+        it("returns package name when formatter is not available", function()
+            local conform = require("conform")
+            helpers.stub(conform, "get_formatter_info", {
+                name = "stylua",
+                command = "stylua",
+                available = false,
+            })
+
+            mason.is_enabled = true
+            helpers.stub(mason, "resolve_tool", "stylua")
+
+            local result = plugin:resolve_package("stylua")
+
+            assert.same("stylua", result)
+            assert.stub(mason.resolve_tool).was_called_with(match.ref(mason), "stylua")
+        end)
+
+        it("returns nil when mason is not enabled", function()
+            mason.is_enabled = false
+
+            local result = plugin:resolve_package("stylua")
+
+            assert.is_nil(result)
+        end)
+
+        it("returns nil when formatter info has no command", function()
+            local conform = require("conform")
+            helpers.stub(conform, "get_formatter_info", {
+                name = "unknown",
+                available = false,
+            })
+
+            mason.is_enabled = true
+
+            local result = plugin:resolve_package("unknown")
+
+            assert.is_nil(result)
+        end)
+
+        it("extracts executable name from full path", function()
+            local conform = require("conform")
+            helpers.stub(conform, "get_formatter_info", {
+                name = "stylua",
+                command = "/home/user/.local/share/nvim/mason/bin/stylua",
+                available = false,
+            })
+
+            mason.is_enabled = true
+            helpers.stub(mason, "resolve_tool", "stylua")
+
+            plugin:resolve_package("stylua")
+
+            assert.stub(mason.resolve_tool).was_called_with(match.ref(mason), "stylua")
+        end)
     end)
 end)
