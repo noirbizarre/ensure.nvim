@@ -27,4 +27,4 @@ jobs:
           key: ${{ runner.os }}-tests-${{ hashFiles('tests/minit.lua') }}
 
       - name: Run Tests
-        run: tests/minit.lua tests -v
+        run: scripts/test.lua -v

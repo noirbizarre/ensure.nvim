@@ -1,4 +1,4 @@
-local helpers = require("tests.helpers")
+local helpers = require("spec.helpers")
 local match = require("luassert.match")
 
 describe("ensure.plugin.treesitter", function()

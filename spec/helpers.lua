@@ -1,4 +1,4 @@
-require("tests.matchers")
+require("spec.matchers")
 
 local M = {}
 

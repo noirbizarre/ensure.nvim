@@ -1,4 +1,4 @@
-local helpers = require("tests.helpers")
+local helpers = require("spec.helpers")
 
 describe("ensure.notify", function()
     after_each(function()

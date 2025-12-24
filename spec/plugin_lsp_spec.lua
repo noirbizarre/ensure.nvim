@@ -1,4 +1,4 @@
-local helpers = require("tests.helpers")
+local helpers = require("spec.helpers")
 
 describe("ensure.plugin.lsp", function()
     before_each(function()

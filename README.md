@@ -286,7 +286,7 @@ The `Ensure` command as well as on demand installation of missing parsers/format
 This plugin includes a small busted test suite.
 
   ```bash
-  tests/minit.lua tests
+  scripts/test.lua
   ```
 
 ## Acknowledgements

@@ -1,4 +1,4 @@
-local helpers = require("tests.helpers")
+local helpers = require("spec.helpers")
 
 describe("ensure.health", function()
     before_each(function()
