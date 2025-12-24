@@ -64,8 +64,11 @@ describe("ensure.plugin.lsp", function()
             },
         }
 
-        plugin.lsp_to_mason = { lua_ls = "lua-language-server" }
-        plugin.mason_to_lsp = { ["lua-language-server"] = "lua_ls" }
+        -- Mock resolve_package to return expected mappings
+        helpers.stub(plugin, "resolve_package", function(_, lsp_name)
+            local mapping = { lua_ls = "lua-language-server" }
+            return mapping[lsp_name]
+        end)
 
         plugin:autoinstall("lua")
 
@@ -95,21 +98,6 @@ describe("ensure.plugin.lsp", function()
             .was_called_with("`ensure.plugin.mason` plugin is not enabled, LSPs won't be installed")
     end)
 
-    it("build_mapping populates lsp_to_mason and mason_to_lsp from registry specs", function()
-        local registry = require("mason-registry")
-        helpers.stub(registry, "get_all_package_specs", {
-            { name = "lua-language-server", neovim = { lspconfig = "lua_ls" } },
-            { name = "pyright", neovim = { lspconfig = "pyright" } },
-            { name = "some-tool", neovim = {} },
-            { name = "another-tool" },
-        })
-
-        plugin:build_mapping()
-
-        assert.same({ lua_ls = "lua-language-server", pyright = "pyright" }, plugin.lsp_to_mason)
-        assert.same({ ["lua-language-server"] = "lua_ls", pyright = "pyright" }, plugin.mason_to_lsp)
-    end)
-
     it("install installs enabled LSP packages via mason", function()
         mason.is_enabled = true
         helpers.stub(mason, "install_packages")
@@ -119,8 +107,11 @@ describe("ensure.plugin.lsp", function()
             pyright = {},
         }
 
-        plugin.lsp_to_mason = { lua_ls = "lua-language-server" }
-        plugin.mason_to_lsp = { ["lua-language-server"] = "lua_ls" }
+        -- Mock resolve_package to return expected mappings
+        helpers.stub(plugin, "resolve_package", function(_, lsp_name)
+            local mapping = { lua_ls = "lua-language-server", pyright = "pyright" }
+            return mapping[lsp_name]
+        end)
 
         plugin:install()
 
@@ -138,8 +129,11 @@ describe("ensure.plugin.lsp", function()
             pyright = {},
         }
 
-        plugin.lsp_to_mason = { lua_ls = "lua-language-server" }
-        plugin.mason_to_lsp = { ["lua-language-server"] = "lua_ls" }
+        -- Mock resolve_package to return expected mappings
+        helpers.stub(plugin, "resolve_package", function(_, lsp_name)
+            local mapping = { lua_ls = "lua-language-server", jsonls = "json-lsp", pyright = "pyright" }
+            return mapping[lsp_name]
+        end)
 
         plugin:install({ all = true })
 
@@ -155,31 +149,157 @@ describe("ensure.plugin.lsp", function()
         assert.stub(mason.install_packages).was_not_called()
     end)
 
-    it("setup builds mapping when mason is enabled", function()
-        mason.is_enabled = true
-        helpers.stub(vim.lsp, "enable")
-        helpers.stub(vim.lsp, "config")
-        helpers.stub(plugin, "build_mapping")
+    describe("resolve_package", function()
+        it("returns nil when LSP command is already executable", function()
+            vim.lsp.config._configs = {
+                lua_ls = { cmd = { "lua-language-server" } },
+            }
 
-        local registry = require("mason-registry")
-        helpers.stub(registry, "on")
+            mason.is_enabled = true
+            helpers.stub(vim.fn, "executable", 1)
+            helpers.stub(mason, "resolve_tool", "lua-language-server")
 
-        ---@diagnostic disable-next-line: missing-fields
-        plugin:setup({ lsp = { enable = {}, disable = {} } })
+            local result = plugin:resolve_package("lua_ls")
 
-        assert.stub(plugin.build_mapping).was_called()
-        assert.stub(registry.on).was_called_with(match.ref(registry), "update:success", match.is_function())
-    end)
+            assert.is_nil(result)
+            assert.stub(mason.resolve_tool).was_not_called()
+        end)
 
-    it("setup does not build mapping when mason is disabled", function()
-        mason.is_enabled = false
-        helpers.stub(vim.lsp, "enable")
-        helpers.stub(vim.lsp, "config")
-        helpers.stub(plugin, "build_mapping")
+        it("returns package name from mason resolve_lsp when LSP command is not executable", function()
+            vim.lsp.config._configs = {
+                lua_ls = { cmd = { "lua-language-server" } },
+            }
 
-        ---@diagnostic disable-next-line: missing-fields
-        plugin:setup({ lsp = { enable = {}, disable = {} } })
+            mason.is_enabled = true
+            helpers.stub(vim.fn, "executable", 0)
+            helpers.stub(mason, "resolve_lsp", "lua-language-server")
 
-        assert.stub(plugin.build_mapping).was_not_called()
+            local result = plugin:resolve_package("lua_ls")
+
+            assert.same("lua-language-server", result)
+            assert.stub(mason.resolve_lsp).was_called_with(match.ref(mason), "lua_ls")
+        end)
+
+        it("returns nil when mason is not enabled", function()
+            mason.is_enabled = false
+
+            local result = plugin:resolve_package("lua_ls")
+
+            assert.is_nil(result)
+        end)
+
+        it("returns nil when LSP config has no cmd", function()
+            vim.lsp.config._configs = {
+                no_cmd = {},
+            }
+
+            mason.is_enabled = true
+            helpers.stub(mason, "resolve_lsp", nil)
+            helpers.stub(mason, "resolve_tool", nil)
+            helpers.stub(mason, "resolve", false)
+
+            local result = plugin:resolve_package("no_cmd")
+
+            assert.is_nil(result)
+        end)
+
+        it("returns nil when LSP is not configured", function()
+            vim.lsp.config._configs = {}
+
+            mason.is_enabled = true
+            helpers.stub(mason, "resolve_lsp", nil)
+            helpers.stub(mason, "resolve_tool", nil)
+            helpers.stub(mason, "resolve", false)
+
+            local result = plugin:resolve_package("unknown_lsp")
+
+            assert.is_nil(result)
+        end)
+
+        it("handles cmd as function", function()
+            vim.lsp.config._configs = {
+                dynamic_lsp = {
+                    cmd = function()
+                        return { "dynamic-server" }
+                    end,
+                },
+            }
+
+            mason.is_enabled = true
+            helpers.stub(vim.fn, "executable", 0)
+            helpers.stub(mason, "resolve_lsp", "dynamic-pkg")
+
+            local result = plugin:resolve_package("dynamic_lsp")
+
+            assert.same("dynamic-pkg", result)
+        end)
+
+        it("returns nil when cmd function returns executable command", function()
+            vim.lsp.config._configs = {
+                dynamic_lsp = {
+                    cmd = function()
+                        return { "available-server" }
+                    end,
+                },
+            }
+
+            mason.is_enabled = true
+            helpers.stub(vim.fn, "executable", 1)
+            helpers.stub(mason, "resolve_tool", "dynamic-pkg")
+
+            local result = plugin:resolve_package("dynamic_lsp")
+
+            assert.is_nil(result)
+            assert.stub(mason.resolve_tool).was_not_called()
+        end)
+
+        it("falls back to mason resolve_tool when resolve_lsp returns nil", function()
+            vim.lsp.config._configs = {
+                pyright = { cmd = { "pyright-langserver" } },
+            }
+
+            mason.is_enabled = true
+            helpers.stub(vim.fn, "executable", 0)
+            helpers.stub(mason, "resolve_lsp", nil)
+            helpers.stub(mason, "resolve_tool", "pyright")
+
+            local result = plugin:resolve_package("pyright")
+
+            assert.same("pyright", result)
+            assert.stub(mason.resolve_tool).was_called_with(match.ref(mason), "pyright")
+        end)
+
+        it("falls back to mason resolve when resolve_lsp and resolve_tool return nil", function()
+            vim.lsp.config._configs = {
+                custom_lsp = { cmd = { "custom-server" } },
+            }
+
+            mason.is_enabled = true
+            helpers.stub(vim.fn, "executable", 0)
+            helpers.stub(mason, "resolve_lsp", nil)
+            helpers.stub(mason, "resolve_tool", nil)
+            helpers.stub(mason, "resolve", true)
+
+            local result = plugin:resolve_package("custom_lsp")
+
+            assert.same("custom_lsp", result)
+            assert.stub(mason.resolve).was_called_with(match.ref(mason), "custom_lsp")
+        end)
+
+        it("returns nil when no resolution method finds package", function()
+            vim.lsp.config._configs = {
+                unknown_lsp = { cmd = { "unknown-server" } },
+            }
+
+            mason.is_enabled = true
+            helpers.stub(vim.fn, "executable", 0)
+            helpers.stub(mason, "resolve_lsp", nil)
+            helpers.stub(mason, "resolve_tool", nil)
+            helpers.stub(mason, "resolve", false)
+
+            local result = plugin:resolve_package("unknown_lsp")
+
+            assert.is_nil(result)
+        end)
     end)
 end)

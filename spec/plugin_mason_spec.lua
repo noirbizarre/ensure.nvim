@@ -26,6 +26,7 @@ describe("ensure.plugin.mason #plugin #mason", function()
         helpers.stub(registry, "is_installed", function(name)
             return name == "pkg2"
         end)
+        helpers.stub(registry, "on")
 
         helpers.stub(plugin, "install_packages")
 
@@ -35,6 +36,18 @@ describe("ensure.plugin.mason #plugin #mason", function()
         assert.is_true(plugin.is_enabled)
 
         assert.stub(plugin.install_packages).was_called_with(match.is_ref(plugin), { "pkg1" })
+    end)
+
+    it("registers clear_mappings callback on registry update:success", function()
+        local registry = require("mason-registry")
+        helpers.stub(registry, "is_installed", false)
+        helpers.stub(registry, "on")
+
+        helpers.stub(plugin, "install_packages")
+
+        plugin:setup(opts)
+
+        assert.stub(registry.on).was_called_with(match.is_ref(registry), "update:success", match.is_function())
     end)
 
     it("does not enable itself when mason is missing", function()
@@ -234,7 +247,7 @@ describe("ensure.plugin.mason #plugin #mason", function()
     end)
 
     describe("tool mapping", function()
-        it("build_tool_mapping returns cached mapping on subsequent calls", function()
+        it("build_mappings returns cached mapping on subsequent calls", function()
             local registry = require("mason-registry")
             helpers.stub(registry, "get_all_package_specs", {
                 { name = "stylua", bin = { stylua = "cargo:stylua" } },
@@ -242,15 +255,16 @@ describe("ensure.plugin.mason #plugin #mason", function()
 
             plugin.is_enabled = true
             plugin._tool_to_package = nil
+            plugin._lsp_to_mason = nil
+            plugin._mason_to_lsp = nil
 
-            local mapping1 = plugin:build_tool_mapping()
-            local mapping2 = plugin:build_tool_mapping()
+            plugin:build_mappings()
+            plugin:build_mappings()
 
-            assert.same(mapping1, mapping2)
             assert.stub(registry.get_all_package_specs).was_called(1)
         end)
 
-        it("build_tool_mapping extracts tools from package bin fields", function()
+        it("build_mappings extracts tools from package bin fields", function()
             local registry = require("mason-registry")
             helpers.stub(registry, "get_all_package_specs", {
                 { name = "stylua", bin = { stylua = "cargo:stylua" } },
@@ -263,26 +277,55 @@ describe("ensure.plugin.mason #plugin #mason", function()
 
             plugin.is_enabled = true
             plugin._tool_to_package = nil
+            plugin._lsp_to_mason = nil
+            plugin._mason_to_lsp = nil
 
-            local mapping = plugin:build_tool_mapping()
+            plugin:build_mappings()
 
-            assert.same("stylua", mapping["stylua"])
-            assert.same("cmakelang", mapping["cmake-format"])
-            assert.same("cmakelang", mapping["cmake-lint"])
+            assert.same("stylua", plugin._tool_to_package["stylua"])
+            assert.same("cmakelang", plugin._tool_to_package["cmake-format"])
+            assert.same("cmakelang", plugin._tool_to_package["cmake-lint"])
         end)
 
-        it("build_tool_mapping returns empty table when mason not enabled", function()
-            plugin.is_enabled = false
+        it("build_mappings extracts LSP mappings from neovim.lspconfig fields", function()
+            local registry = require("mason-registry")
+            helpers.stub(registry, "get_all_package_specs", {
+                { name = "lua-language-server", neovim = { lspconfig = "lua_ls" } },
+                { name = "pyright", neovim = { lspconfig = "pyright" } },
+                { name = "some-tool", neovim = {} },
+                { name = "another-tool" },
+            })
+
+            plugin.is_enabled = true
             plugin._tool_to_package = nil
+            plugin._lsp_to_mason = nil
+            plugin._mason_to_lsp = nil
 
-            local mapping = plugin:build_tool_mapping()
+            plugin:build_mappings()
 
-            assert.same({}, mapping)
+            assert.same("lua-language-server", plugin._lsp_to_mason["lua_ls"])
+            assert.same("pyright", plugin._lsp_to_mason["pyright"])
+            assert.same("lua_ls", plugin._mason_to_lsp["lua-language-server"])
+            assert.same("pyright", plugin._mason_to_lsp["pyright"])
+        end)
+
+        it("clear_mappings resets all cached mappings", function()
+            plugin._tool_to_package = { stylua = "stylua" }
+            plugin._lsp_to_mason = { lua_ls = "lua-language-server" }
+            plugin._mason_to_lsp = { ["lua-language-server"] = "lua_ls" }
+
+            plugin:clear_mappings()
+
+            assert.is_nil(plugin._tool_to_package)
+            assert.is_nil(plugin._lsp_to_mason)
+            assert.is_nil(plugin._mason_to_lsp)
         end)
 
         it("resolve_tool returns package name for known tool", function()
             plugin.is_enabled = true
             plugin._tool_to_package = { stylua = "stylua", ["cmake-format"] = "cmakelang" }
+            plugin._lsp_to_mason = {}
+            plugin._mason_to_lsp = {}
 
             assert.same("stylua", plugin:resolve_tool("stylua"))
             assert.same("cmakelang", plugin:resolve_tool("cmake-format"))
@@ -291,8 +334,48 @@ describe("ensure.plugin.mason #plugin #mason", function()
         it("resolve_tool returns nil for unknown tool", function()
             plugin.is_enabled = true
             plugin._tool_to_package = { stylua = "stylua" }
+            plugin._lsp_to_mason = {}
+            plugin._mason_to_lsp = {}
 
             assert.is_nil(plugin:resolve_tool("unknown-tool"))
+        end)
+
+        it("resolve_lsp returns package name for known LSP", function()
+            plugin.is_enabled = true
+            plugin._tool_to_package = {}
+            plugin._lsp_to_mason = { lua_ls = "lua-language-server", pyright = "pyright" }
+            plugin._mason_to_lsp = {}
+
+            assert.same("lua-language-server", plugin:resolve_lsp("lua_ls"))
+            assert.same("pyright", plugin:resolve_lsp("pyright"))
+        end)
+
+        it("resolve_lsp returns nil for unknown LSP", function()
+            plugin.is_enabled = true
+            plugin._tool_to_package = {}
+            plugin._lsp_to_mason = { lua_ls = "lua-language-server" }
+            plugin._mason_to_lsp = {}
+
+            assert.is_nil(plugin:resolve_lsp("unknown_lsp"))
+        end)
+
+        it("lsp_from_package returns LSP name for known package", function()
+            plugin.is_enabled = true
+            plugin._tool_to_package = {}
+            plugin._lsp_to_mason = {}
+            plugin._mason_to_lsp = { ["lua-language-server"] = "lua_ls", pyright = "pyright" }
+
+            assert.same("lua_ls", plugin:lsp_from_package("lua-language-server"))
+            assert.same("pyright", plugin:lsp_from_package("pyright"))
+        end)
+
+        it("lsp_from_package returns nil for unknown package", function()
+            plugin.is_enabled = true
+            plugin._tool_to_package = {}
+            plugin._lsp_to_mason = {}
+            plugin._mason_to_lsp = { ["lua-language-server"] = "lua_ls" }
+
+            assert.is_nil(plugin:lsp_from_package("unknown-package"))
         end)
     end)
 end)

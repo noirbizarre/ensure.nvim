@@ -9,6 +9,14 @@ local M = Plugin:new()
 ---@type table<string, string>|nil
 M._tool_to_package = nil
 
+---Map of LSP names to their Mason package names
+---@type table<string, string>|nil
+M._lsp_to_mason = nil
+
+---Map of Mason package names to their LSP names
+---@type table<string, string>|nil
+M._mason_to_lsp = nil
+
 function M:setup(opts)
     self.packages = opts.packages
     self.ignore = opts.ignore.packages
@@ -23,6 +31,11 @@ function M:setup(opts)
         end, self.packages)
 
         self:install_packages(packages)
+
+        -- Clear cached mappings when registry is updated so they get rebuilt
+        Registry:on("update:success", function()
+            self:clear_mappings()
+        end)
     end
 end
 
@@ -172,28 +185,42 @@ function M:install()
     end
 end
 
----Build a mapping from tool/executable names to Mason package names
----Uses the `bin` field from Mason package specs
----@return table<string, string>
-function M:build_tool_mapping()
+---Build all mappings from Mason registry specs in a single pass
+---Builds: tool_to_package, lsp_to_mason, mason_to_lsp
+function M:build_mappings()
     if self._tool_to_package then
-        return self._tool_to_package
+        return -- Already built
     end
 
     self._tool_to_package = {}
+    self._lsp_to_mason = {}
+    self._mason_to_lsp = {}
 
     local Registry = require("mason-registry")
     local specs = Registry.get_all_package_specs()
 
     for _, spec in ipairs(specs) do
+        -- Build tool to package mapping from bin field
         if spec.bin then
             for tool_name, _ in pairs(spec.bin) do
                 self._tool_to_package[tool_name] = spec.name
             end
         end
-    end
 
-    return self._tool_to_package
+        -- Build LSP mappings from neovim.lspconfig field
+        local lspconfig = vim.tbl_get(spec, "neovim", "lspconfig")
+        if lspconfig then
+            self._lsp_to_mason[lspconfig] = spec.name
+            self._mason_to_lsp[spec.name] = lspconfig
+        end
+    end
+end
+
+---Clear all cached mappings (used when registry is updated)
+function M:clear_mappings()
+    self._tool_to_package = nil
+    self._lsp_to_mason = nil
+    self._mason_to_lsp = nil
 end
 
 ---Resolve a tool name to a Mason package name
@@ -201,8 +228,26 @@ end
 ---@param tool_name string The tool/executable name
 ---@return string|nil
 function M:resolve_tool(tool_name)
-    local mapping = self:build_tool_mapping()
-    return mapping[tool_name]
+    self:build_mappings()
+    return self._tool_to_package[tool_name]
+end
+
+---Resolve an LSP server name to a Mason package name
+---Returns nil if the LSP is not found in Mason registry
+---@param lsp_name string The LSP server name
+---@return string|nil
+function M:resolve_lsp(lsp_name)
+    self:build_mappings()
+    return self._lsp_to_mason[lsp_name]
+end
+
+---Resolve a Mason package name to an LSP server name
+---Returns nil if the package is not found
+---@param package_name string The Mason package name
+---@return string|nil
+function M:lsp_from_package(package_name)
+    self:build_mappings()
+    return self._mason_to_lsp[package_name]
 end
 
 return M
