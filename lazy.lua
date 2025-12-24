@@ -14,6 +14,7 @@ return {
     opts_extend = {
         "ignore.packages",
         "ignore.parsers",
+        "lsp.auto.ignore",
         "lsp.disable",
         "lsp.enable",
         "packages",

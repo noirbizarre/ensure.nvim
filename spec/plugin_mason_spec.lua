@@ -246,6 +246,64 @@ describe("ensure.plugin.mason #plugin #mason", function()
         assert.is_nil(result)
     end)
 
+    describe("try_install", function()
+        it("calls callback immediately when package is already installed", function()
+            local registry = require("mason-registry")
+            helpers.stub(registry, "is_installed", true)
+
+            local Package = require("mason-core.package")
+            helpers.stub(Package, "Parse", function(pkg)
+                return pkg, nil
+            end)
+
+            local callback_called = false
+            local callback_pkg = nil
+            local callback = function(pkg)
+                callback_called = true
+                callback_pkg = pkg
+            end
+
+            plugin:try_install("lua-language-server", callback)
+
+            assert.is_true(callback_called)
+            assert.same("lua-language-server", callback_pkg)
+        end)
+
+        it("does not call callback when package is already installed and no callback provided", function()
+            local registry = require("mason-registry")
+            helpers.stub(registry, "is_installed", true)
+
+            local Package = require("mason-core.package")
+            helpers.stub(Package, "Parse", function(pkg)
+                return pkg, nil
+            end)
+
+            -- Should not error
+            plugin:try_install("lua-language-server")
+        end)
+
+        it("does not call callback when package is in failed list", function()
+            local registry = require("mason-registry")
+            helpers.stub(registry, "is_installed", false)
+
+            local Package = require("mason-core.package")
+            helpers.stub(Package, "Parse", function(pkg)
+                return pkg, nil
+            end)
+
+            plugin.failed = { "failed-pkg" }
+
+            local callback_called = false
+            local callback = function()
+                callback_called = true
+            end
+
+            plugin:try_install("failed-pkg", callback)
+
+            assert.is_false(callback_called)
+        end)
+    end)
+
     describe("tool mapping", function()
         it("build_mappings returns cached mapping on subsequent calls", function()
             local registry = require("mason-registry")
@@ -376,6 +434,140 @@ describe("ensure.plugin.mason #plugin #mason", function()
             plugin._mason_to_lsp = { ["lua-language-server"] = "lua_ls" }
 
             assert.is_nil(plugin:lsp_from_package("unknown-package"))
+        end)
+
+        it("find_lsps_for_filetype returns LSPs with matching filetypes", function()
+            plugin.is_enabled = true
+            plugin._tool_to_package = {}
+            plugin._lsp_to_mason = { lua_ls = "lua-language-server", pyright = "pyright" }
+            plugin._mason_to_lsp = {}
+
+            -- Mock vim.lsp.config to return configs via __index (simulating lazy-loading)
+            local mock_configs = {
+                lua_ls = { filetypes = { "lua" } },
+                pyright = { filetypes = { "python" } },
+            }
+            setmetatable(vim.lsp.config, {
+                __index = function(_, key)
+                    return mock_configs[key]
+                end,
+            })
+
+            local results = plugin:find_lsps_for_filetype("lua")
+
+            assert.same(1, #results)
+            assert.same("lua_ls", results[1].lsp)
+            assert.same("lua-language-server", results[1].package)
+        end)
+
+        it("find_lsps_for_filetype returns multiple LSPs when available", function()
+            plugin.is_enabled = true
+            plugin._tool_to_package = {}
+            plugin._lsp_to_mason = { pyright = "pyright", pylsp = "python-lsp-server" }
+            plugin._mason_to_lsp = {}
+
+            local mock_configs = {
+                pyright = { filetypes = { "python" } },
+                pylsp = { filetypes = { "python" } },
+            }
+            setmetatable(vim.lsp.config, {
+                __index = function(_, key)
+                    return mock_configs[key]
+                end,
+            })
+
+            local results = plugin:find_lsps_for_filetype("python")
+
+            assert.same(2, #results)
+        end)
+
+        it("find_lsps_for_filetype returns empty table when no LSPs match", function()
+            plugin.is_enabled = true
+            plugin._tool_to_package = {}
+            plugin._lsp_to_mason = { lua_ls = "lua-language-server" }
+            plugin._mason_to_lsp = {}
+
+            local mock_configs = {
+                lua_ls = { filetypes = { "lua" } },
+            }
+            setmetatable(vim.lsp.config, {
+                __index = function(_, key)
+                    return mock_configs[key]
+                end,
+            })
+
+            local results = plugin:find_lsps_for_filetype("python")
+
+            assert.same({}, results)
+        end)
+
+        it("find_lsps_for_filetype ignores LSPs without filetypes config", function()
+            plugin.is_enabled = true
+            plugin._tool_to_package = {}
+            plugin._lsp_to_mason = { lua_ls = "lua-language-server", some_lsp = "some-package" }
+            plugin._mason_to_lsp = {}
+
+            local mock_configs = {
+                lua_ls = { filetypes = { "lua" } },
+                some_lsp = {}, -- No filetypes
+            }
+            setmetatable(vim.lsp.config, {
+                __index = function(_, key)
+                    return mock_configs[key]
+                end,
+            })
+
+            local results = plugin:find_lsps_for_filetype("lua")
+
+            assert.same(1, #results)
+            assert.same("lua_ls", results[1].lsp)
+        end)
+
+        it("find_lsps_for_filetype ignores LSPs not in Mason registry", function()
+            plugin.is_enabled = true
+            plugin._tool_to_package = {}
+            plugin._lsp_to_mason = { lua_ls = "lua-language-server" } -- pyright not in mapping
+            plugin._mason_to_lsp = {}
+
+            local mock_configs = {
+                lua_ls = { filetypes = { "lua" } },
+                pyright = { filetypes = { "lua" } }, -- Not in _lsp_to_mason
+            }
+            setmetatable(vim.lsp.config, {
+                __index = function(_, key)
+                    return mock_configs[key]
+                end,
+            })
+
+            local results = plugin:find_lsps_for_filetype("lua")
+
+            assert.same(1, #results)
+            assert.same("lua_ls", results[1].lsp)
+        end)
+
+        it("find_lsps_for_filetype handles LSP config loading errors gracefully", function()
+            plugin.is_enabled = true
+            plugin._tool_to_package = {}
+            plugin._lsp_to_mason = { lua_ls = "lua-language-server", broken_lsp = "broken-package" }
+            plugin._mason_to_lsp = {}
+
+            local mock_configs = {
+                lua_ls = { filetypes = { "lua" } },
+            }
+            setmetatable(vim.lsp.config, {
+                __index = function(_, key)
+                    if key == "broken_lsp" then
+                        error("Failed to load LSP config")
+                    end
+                    return mock_configs[key]
+                end,
+            })
+
+            local results = plugin:find_lsps_for_filetype("lua")
+
+            -- Should still return lua_ls, gracefully skipping the broken one
+            assert.same(1, #results)
+            assert.same("lua_ls", results[1].lsp)
         end)
     end)
 end)

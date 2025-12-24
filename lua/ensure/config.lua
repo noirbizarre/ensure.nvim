@@ -1,6 +1,14 @@
+---@class LspAutoConfig
+---@field enable boolean Enable auto-detection of LSPs for filetypes with no enabled LSP
+---@field ignore string[] LSPs to ignore in auto-detection mode (not counted as "enabled", filtered from suggestions)
+---@field multi boolean If true, prompt user to select when multiple LSPs match; if false, do nothing
+
+---@alias LspAuto boolean|LspAutoConfig
+
 ---@class LspConfig: {[string]: table|function}
 ---@field enable string[] List of LSP server names to ensure are installed via mason.nvim and enabled
 ---@field disable string[] List of LSP server names to ensure are not enabled (allow by-project disabling)
+---@field auto LspAuto Auto-detection config: boolean or table with enable/ignore/multi fields
 
 ---@class IgnoreConfig
 ---@field packages string[] List of package names to ignore when ensuring installation via mason.nvim
@@ -28,6 +36,7 @@ local defaults = {
     lsp = {
         enable = {},
         disable = {},
+        auto = false,
     },
     ignore = {
         packages = {},

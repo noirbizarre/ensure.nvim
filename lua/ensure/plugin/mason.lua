@@ -80,7 +80,15 @@ function M:try_install(package, callback)
     local Package = require("mason-core.package")
     local package_name, version = Package.Parse(package)
 
-    if vim.list_contains(M.failed, package) or Registry.is_installed(package_name) then
+    if vim.list_contains(M.failed, package) then
+        return
+    end
+
+    -- If already installed, call callback immediately and return
+    if Registry.is_installed(package_name) then
+        if callback then
+            callback(package_name)
+        end
         return
     end
 
@@ -248,6 +256,32 @@ end
 function M:lsp_from_package(package_name)
     self:build_mappings()
     return self._mason_to_lsp[package_name]
+end
+
+---Find available LSPs for a filetype from Mason registry
+---Returns LSPs that have configurations with matching filetypes and are available in Mason
+---Uses vim.lsp.config[name] to trigger lazy-loading of LSP configs from runtime path
+---@param ft string The filetype to search for
+---@return {lsp: string, package: string}[] List of available LSP entries
+function M:find_lsps_for_filetype(ft)
+    self:build_mappings()
+    local results = {}
+
+    for lsp_name, package_name in pairs(self._lsp_to_mason or {}) do
+        -- Use vim.lsp.config[lsp_name] to trigger lazy-loading from lsp/*.lua runtime files
+        -- This ensures we find LSPs even if they haven't been explicitly configured
+        local ok, config = pcall(function()
+            return vim.lsp.config[lsp_name]
+        end)
+        if ok and config and config.filetypes and vim.list_contains(config.filetypes, ft) then
+            table.insert(results, {
+                lsp = lsp_name,
+                package = package_name,
+            })
+        end
+    end
+
+    return results
 end
 
 return M
