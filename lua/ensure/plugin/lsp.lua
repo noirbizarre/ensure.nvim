@@ -72,7 +72,7 @@ function M:setup(opts)
         config = opts.lsp.auto,
         defaults = { ignore = LSP_DEFAULT_IGNORE },
         mason = mason,
-        kind = "LSP",
+        kind = "LSP server",
         find_available = function(ft)
             return mason:find_lsps_for_filetype(ft)
         end,
