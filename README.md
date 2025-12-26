@@ -1,32 +1,26 @@
-# 📦 `ensure.nvim`
+# ensure.nvim
 
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/noirbizarre/ensure.nvim/main.svg)](https://results.pre-commit.ci/latest/github/noirbizarre/ensure.nvim/main)
 [![CI](https://github.com/noirbizarre/ensure.nvim/actions/workflows/ci.yaml/badge.svg)](https://github.com/noirbizarre/ensure.nvim/actions/workflows/ci.yaml)
 
-Help to modularize `lazy.nvim` based config by providing:
+Declarative tool management for Neovim. Automatically install and configure LSP servers, formatters, linters, and tree-sitter parsers.
 
-- A simple way to ensure Mason dependencies are installed
-- filetype-based automatic tree-sitter parser installation
-- LSP server installation and setup
-- project-specific configuration loading
+## Features
+
+- **Automatic installation**: Tools are installed on-demand when you open a file
+- **Declarative configuration**: Define what you need, let the plugin handle the rest
+- **Auto-detection**: Suggest and install tools for filetypes without configuration
+- **Modular**: Works with your existing Mason, LSP, conform, and nvim-lint setup
+- **Project-specific**: Override configuration per-project with `.lazy.lua`
 
 ## Installation
 
 ```lua
 {
     "noirbizarre/ensure.nvim",
-}
-```
-
-All dependencies are optional as `ensure.nvim` will detect installed plugin.
-But you can explicitly declare them to make sure they are installed:
-
-```lua
-{
-    "noirbizarre/ensure.nvim",
     dependencies = {
-        "mason-org/mason.nvim",
-        "neovim/nvim-lspconfig",
+        "mason-org/mason.nvim",         -- Required for tool installation
+        -- Optional integrations:
         "nvim-treesitter/nvim-treesitter",
         "stevearc/conform.nvim",
         "mfussenegger/nvim-lint",
@@ -34,199 +28,61 @@ But you can explicitly declare them to make sure they are installed:
 }
 ```
 
-This plugin is lazy-loaded by default.
-
-### Configuration
-
-Default configuration is empty and just load all provided plugins:
-
-```lua
-{
-    install = false,
-    --- Mason packages to install
-    packages = {},
-    --- Treesitter parsers to install
-    parsers = {},
-    --- `conform.nvim` formatters by filetypes
-    formatters = {
-        auto = false, -- Auto-detect formatters (boolean or table)
-    },
-    --- `nvim-lint` linters by filetypes
-    linters = {
-        auto = false, -- Auto-detect linters (boolean or table)
-    },
-    lsp = {
-        --- LSP servers to enable
-        enable = {},
-        --- LSP servers to disable (take precedence over `enable`)
-        disable = {},
-        --- Auto-detect LSP servers
-        auto = false,
-    },
-    ignore = {
-        --- Mason packages to ignore (never install)
-        packages = {},
-        --- Treesitter parsers to ignore (never install)
-        parsers = {},
-    },
-    --- Enabled plugins
-    plugins = {
-        "ensure.plugin.mason",
-        "ensure.plugin.lsp",
-        "ensure.plugin.treesitter",
-        "ensure.plugin.conform",
-        "ensure.plugin.lint",
-    },
-}
-```
-
 > [!NOTE]
-> If you already have Mason, LSP, Treesitter, Conform or Lint configured in your Neovim setup, and just want automatic download you don't need configuration.
-> By default, `ensure.nvim` will automatically download enabled LSP servers, formatters, linters and Treesitter parsers for each buffer open.
+> If you already have Mason, LSP, Treesitter, Conform or Lint configured, `ensure.nvim` will automatically install missing tools when you open a file. No configuration needed.
+> Also, if you already have the required dependencies installed, you can omit them from the `dependencies` list.
 
-## Usage
+## Quick Start
 
-First, don't forget to run `:checkhealth ensure` to verify that all dependencies are installed and configured properly.
-
-### Declarative base
-
-One purpose of `ensure.nvim` is to provide a declarative way to ensure that certain dependencies are installed and configured.
-
-The plugin declaratively ensures that the specified Mason packages are installed, tree-sitter parsers are set up, and LSP servers configured.
-
-You can configure it once and for all:
+### Basic Setup
 
 ```lua
 {
     "noirbizarre/ensure.nvim",
     opts = {
-        packages = {"mason", "packages", "to", "install", ft = {"package-for-filetype"}},
-        parsers = {"treesitter", "parsers", "to", "install"},
+        -- LSP servers
         lsp = {
-            enable = {"lsp", "to", "install", "and", "enable" },
-            my_lsp = {
-                -- lsp specific settings
-            },
+            enable = { "lua_ls", "pyright", "ts_ls" },
         },
+        -- Formatters (by filetype)
         formatters = {
-            ft = {"formatters", "for", "ft"}
+            lua = "stylua",
+            python = { "ruff_format", "ruff_organize_imports" },
+            javascript = "prettier",
         },
+        -- Linters (by filetype)
         linters = {
-            ft = {"linters", "for", "ft"}
+            python = "ruff",
+            javascript = "eslint",
         },
-        ignore = {
-            packages = {"packages", "to", "ignore"},
-            parsers = {"parsers", "to" "ignore"},
-        },
+        -- Tree-sitter parsers
+        parsers = { "lua", "python", "javascript", "typescript" },
+        -- Additional Mason packages
+        packages = { "codespell" },
     },
 }
 ```
 
-You can also take benefit of `lazy.nvim` `opts` merging to modularize your configuration by providing only settings related to the current module.
-By default, the following list will be merged (aka. not need to declare them as `opts_extend` by yourself):
+### Auto-Detection Mode
 
-- `ignore.packages`
-- `ignore.parsers`
-- `lsp.disable`
-- `lsp.enable`
-- `packages`
-- `parsers`
-- `plugins`
-
-> [!TIP]
-> All filetypes entries support both a list of strings or a single string.
->
-> ```lua
-> {
->     "noirbizarre/ensure.nvim",
->     opts = {
->         packages = { ft = "package-for-filetype" },
->         formatters = { ft = "formatter" },
->         linters = { ft = "linters" },
->     },
-> }
->
-> ```
-
-### Install with the `Ensure` command
-
-You can install all packages and parser with the `Ensure` command.
-With the built-in plugins, it will install:
-
-- all declared Mason `packages`
-- all declared tree-sitter `parsers`
-- enabled LSP servers (with the `ensure.nvim` configuration or with `vim.lsp.enable()`)
-- declared `conform.nvim` formatters (with the `formatters` configuration or directly by settings `conform.formatters_by_ft`)
-- declared `nvim-lint` formatters (with the `linters` configuration or directly by settings `lint.formatters_by_ft`)
-
-> [!NOTE]
-> Setting `install = true` in the options will do the same on plugin initialization.
-
-> [!NOTE]
-> You can also do it programmatically with:
->
-> ```lua
-> require('ensure').install()
-> ```
-
-The bang version `Ensure!` will install:
-
-- all declared Mason `packages`
-- all known tree-sitter `parsers`
-- enabled and configured LSP servers (with the `ensure.nvim` configuration or with `vim.lsp.enable()`/`vim.lsp.configure()`)
-- declared `conform.nvim` formatters (with the `formatters` configuration or directly by settings `conform.formatters_by_ft`)
-- declared `nvim-lint` formatters (with the `linters` configuration or directly by settings `lint.formatters_by_ft`)
-
-> [!NOTE]
-> You can also do it programmatically with:
->
-> ```lua
-> require('ensure').install({all = true})
-> ```
-
-`ignore.packages` and `ignore.parsers` will be taken into account in both cases.
-
-You can also call the `Ensure` and `Ensure!` commands with a specific plugin name to only install dependencies related to that plugin:
-
-- `Ensure packages` to only install Mason packages from the `packages` setting
-- `Ensure parsers` to only install Treesitter parsers
-- `Ensure lsps` to only install LSP servers
-- `Ensure formatters` to only install `conform.nvim` formatters
-- `Ensure linters` to only install `nvim-lint` linters
-
-### Asynchronous on-demand loading
-
-Depending on the enabled plugins, `ensure.nvim` will automatically install missing requirements when loading a file:
-
-- Enabled LSP servers.
-- Linters.
-- Formatters.
-- Tree-sitter parsers.
-
-### Auto-detection mode
-
-`ensure.nvim` can automatically detect and suggest formatters, linters, and LSP servers for filetypes that don't have any configured. This uses Mason's registry to find available tools for each filetype.
-
-Enable auto-detection with a simple boolean:
+Let `ensure.nvim` automatically find and suggest tools for filetypes you haven't configured:
 
 ```lua
 {
     "noirbizarre/ensure.nvim",
     opts = {
-        formatters = {
-            auto = true,
-        },
-        linters = {
-            auto = true,
-        },
-        lsp = {
-            auto = true,
-        },
+        lsp = { auto = true },
+        formatters = { auto = true },
+        linters = { auto = true },
     },
 }
 ```
 
-Or with fine-grained control using a table:
+When you open a file without a configured tool:
+- **Single match**: Automatically installed and enabled
+- **Multiple matches**: Prompts you to choose
+
+### Fine-Grained Auto-Detection
 
 ```lua
 {
@@ -235,133 +91,234 @@ Or with fine-grained control using a table:
         formatters = {
             auto = {
                 enable = true,
-                ignore = { "prettier" }, -- Never auto-suggest these tools
-                multi = true,            -- Prompt when multiple options exist (default: true)
-            },
-        },
-        linters = {
-            auto = {
-                enable = true,
-                ignore = { "pylint" },
-                multi = false, -- Silently skip when multiple options exist
-            },
-        },
-        lsp = {
-            auto = {
-                enable = true,
-                ignore = { "copilot", "ltex" }, -- Default ignores included
-                multi = true,
+                multi = false,  -- Don't prompt, skip if multiple options
+                ignore = {
+                    "prettier",                 -- Never suggest prettier
+                    markdown = "*",             -- Disable auto-detection for markdown
+                    javascript = { "deno_fmt" }, -- Ignore deno_fmt for javascript only
+                },
             },
         },
     },
 }
 ```
 
-When `auto` is enabled:
+The `ignore` option supports:
+- Global ignores: `{ "tool1", "tool2" }` - ignored for all filetypes
+- Filetype-specific: `{ javascript = { "deno_fmt" } }` - ignored for that filetype only
+- Disable filetype: `{ markdown = "*" }` - no auto-detection for that filetype
+- Mixed: `{ "codespell", javascript = { "deno_fmt" }, markdown = "*" }`
 
-- If a single tool is available for a filetype, it's automatically installed and enabled
-- If multiple tools are available and `multi = true`, a selection prompt appears
-- If multiple tools are available and `multi = false`, no action is taken
-- Tools in the `ignore` list are never suggested
+#### Default Ignores
 
-> [!NOTE]
-> Auto-detected tools are enabled for the current session only. Add them to your config for persistence.
+Auto-detection ignores spelling/grammar tools by default:
 
-### By project configuration
+- **LSP**: `copilot`, `harper_ls`, `grammarly`, `ltex`, `ltex_plus`, `prosemd_lsp`, `textlsp`, `typos_lsp`, `vale_ls`
+- **Formatters**: `codespell`, `misspell`, `typos`
+- **Linters**: `alex`, `codespell`, `cspell`, `misspell`, `proselint`, `textlint`, `typos`, `vale`, `woke`, `write_good`
 
-`ensure.nvim` can also override specific project configuration using a `.lazy.lua` file:
+Your custom ignores are merged with these defaults.
+
+## Modular Configuration
+
+Take advantage of `lazy.nvim` opts merging to split configuration across files:
 
 ```lua
+-- lua/plugins/python.lua
 return {
     "noirbizarre/ensure.nvim",
     opts = {
-        packages = {"a-mason-package"},
+        lsp = { enable = { "pyright" } },
+        formatters = { python = { "ruff_format" } },
+        linters = { python = "ruff" },
+    },
+}
+```
+
+```lua
+-- lua/plugins/typescript.lua
+return {
+    "noirbizarre/ensure.nvim",
+    opts = {
+        lsp = { enable = { "ts_ls" } },
+        formatters = { typescript = "prettier" },
+        linters = { typescript = "eslint" },
+    },
+}
+```
+
+These are automatically merged. The following lists support `lazy.nvim` merging out of the box:
+`packages`, `parsers`, `plugins`, `lsp.enable`, `lsp.disable`, `ignore.packages`, `ignore.parsers`
+
+## Commands
+
+| Command | Description |
+| ------- | ----------- |
+| `Ensure` | Install all declared tools |
+| `Ensure!` | Install all tools including configured but not enabled |
+| `Ensure packages` | Install Mason packages only |
+| `Ensure parsers` | Install tree-sitter parsers only |
+| `Ensure lsps` | Install LSP servers only |
+| `Ensure formatters` | Install formatters only |
+| `Ensure linters` | Install linters only |
+
+> [!TIP]
+> Set `install = true` in options to run installation on startup.
+
+## Project-Specific Configuration
+
+Override settings per-project using a `.lazy.lua` file in your project root:
+
+```lua
+-- .lazy.lua
+return {
+    "noirbizarre/ensure.nvim",
+    opts = {
         lsp = {
-            -- Disable the default enabled LSP and replace it with another one
-            disable = {"default-lsp-server"},
-            enable = {"new-lsp-server"},
-        },
-        linters = {
-            -- Override linters for filetypes
-            ft = {"a-linter-for-this-project"}
+            disable = { "pyright" },  -- Disable default LSP
+            enable = { "pylsp" },     -- Use different LSP for this project
         },
         formatters = {
-            -- Override formatters for filetypes
-            ft = {"a-linter-for-this-project"}
+            python = "black",  -- Override formatter
         },
     },
 }
 ```
 
-## Plugins
+## LSP Configuration
 
-`ensure.nvim` uses a plugin-based architecture to provide modular features.
+Configure LSP servers directly in `ensure.nvim`:
 
-It comes with the following plugins:
+```lua
+{
+    "noirbizarre/ensure.nvim",
+    opts = {
+        lsp = {
+            enable = { "lua_ls", "pyright" },
+            disable = { "ts_ls" },  -- Takes precedence over enable
+            -- Server-specific settings (passed to vim.lsp.config)
+            lua_ls = {
+                settings = {
+                    Lua = {
+                        diagnostics = { globals = { "vim" } },
+                    },
+                },
+            },
+        },
+    },
+}
+```
 
-- `ensure.plugin.mason`: handle `Mason.nvim` packages installation.
-- `ensure.plugin.treesitter`: handle `nvim-treesitter` parsers installation.
-- `ensure.plugin.lsp`: handle LSP servers installation and setup.
-- `ensure.plugin.conform`: handle `conform.nvim` formatters installation.
-- `ensure.plugin.lint`: handle `nvim-lint` linters installation.
+## Filetype-Specific Packages
 
-Each plugin implements the [`ensure.Plugin` interface](lua/ensure/plugin/init.lua) and can be enabled or disabled using the `plugins` configuration option.
+Install Mason packages only when opening specific filetypes:
 
-You can provide your own plugins by implementing the `ensure.Plugin` interface and adding them to the `plugins` configuration option.
+```lua
+{
+    "noirbizarre/ensure.nvim",
+    opts = {
+        packages = {
+            "universal-package",
+            python = "debugpy",
+            go = { "delve", "gofumpt" },
+        },
+    },
+}
+```
 
-Here's a summary of the available plugins features:
+## Ignoring Tools
 
-| Plugin | `setup()` | `BufRead` | `Ensure` | `Ensure!` |
-| ------ | --------- | ---------- | ------ | ------- |
-| `ensure.plugin.mason` | Install `packages` | Install `packages.<filetype>` | Install `packages` (including filetypes) | Install `packages` (including filetype) |
-| `ensure.plugin.treesitter` | Install `parsers` | Install missing parsers for the filetype | Install `parsers` | Install all known treesitter parsers |
-| `ensure.plugin.lsp` | Enable `lsp.enable` parsers, skip `lsp.disable`, configure `lsp.*` LSPs | Install missing LSPs for the filetype | Install enabled LSP servers, skip `lsp.disable` | Install configured LSP servers |
-| `ensure.plugin.conform` | Declare formatters by filetype | Install missing formatters for the filetype | Install all registered formatters | Install all registered formatters |
-| `ensure.plugin.lint` | Declare linters by filetype | Install missing linters for the filetype | Install all registered linters | Install all registered linters |
+Prevent specific tools from being installed:
+
+```lua
+{
+    "noirbizarre/ensure.nvim",
+    opts = {
+        ignore = {
+            packages = { "some-package" },
+            parsers = { "some-parser" },
+        },
+    },
+}
+```
+
+## Health Check
+
+Run `:checkhealth ensure` to verify your setup.
+
+## Full Configuration Reference
+
+```lua
+{
+    "noirbizarre/ensure.nvim",
+    opts = {
+        -- Install all tools on startup (default: false)
+        install = false,
+
+        -- Mason packages
+        packages = {
+            "package1",
+            filetype = { "package-for-filetype" },
+        },
+
+        -- Tree-sitter parsers
+        parsers = { "lua", "python" },
+
+        -- LSP servers
+        lsp = {
+            enable = {},   -- Servers to enable
+            disable = {},  -- Servers to disable (takes precedence)
+            auto = false,  -- Auto-detect servers (boolean or table)
+            -- Server configs are passed to vim.lsp.config()
+            server_name = { settings = {} },
+        },
+
+        -- Formatters (conform.nvim)
+        formatters = {
+            auto = false,  -- Auto-detect formatters
+            filetype = { "formatter1", "formatter2" },
+        },
+
+        -- Linters (nvim-lint)
+        linters = {
+            auto = false,  -- Auto-detect linters
+            filetype = { "linter1" },
+        },
+
+        -- Ignore lists
+        ignore = {
+            packages = {},
+            parsers = {},
+        },
+
+        -- Enabled plugins
+        plugins = {
+            "ensure.plugin.mason",
+            "ensure.plugin.lsp",
+            "ensure.plugin.treesitter",
+            "ensure.plugin.conform",
+            "ensure.plugin.lint",
+        },
+    },
+}
+```
 
 ## FAQ
 
-### Why another plugin ?
+### Why another plugin?
 
-I wanted a simple way to declaratively ensure that my mason dependencies, tree-sitter parsers and LSP servers are installed and configured without having to write boilerplate code in each of my `lazy.nvim` spec modules.
+With Mason 2.0, Neovim 0.11's `vim.lsp` API, and the new `nvim-treesitter` API, I needed a simple declarative way to manage tools without boilerplate. Many existing plugins were broken or archived after these API changes.
 
-Plus, with the Mason 2.0 API, the Neovim 0.11 `vim.lsp` API and the `nvim-treesitter` new API, most plugins I used were broken (<https://github.com/mason-org/mason-lspconfig.nvim/issues/535>, <https://github.com/mason-org/mason-lspconfig.nvim/issues/606>) or archived (<https://github.com/zapling/mason-conform.nvim>).
+### Is lazy.nvim required?
 
-We now have all the required API to make this work seamlessly so I decided to create this plugin.
-
-### Is `lazy.nvim` required ?
-
-`lazy.nvim` is not strictly required, but this plugin is designed to work seamlessly with it.
-I use `lazy.nvim` as my plugin manager, and this plugin is tailored to work well within that ecosystem.
-
-However, if you are using another plugin manager, you can still use `ensure.nvim`, but you might need to adapt some parts of the configuration to fit your setup.
-
-You need to make sure that the dependencies are loaded before `ensure.nvim` is loaded.
-
-- `mason-org/mason.nvim` for the Mason plugin
-- `neovim/nvim-lspconfig` for the LSP plugin
-- `nvim-treesitter/nvim-treesitter` for the treesitter plugin
-- `stevearc/conform.nvim` for the conform plugin
-- `mfussenegger/nvim-lint` for the lint plugin
-
-Also note that those features might be exclusive to `lazy.nvim`:
-
-- Configuration merging using `opts`: this plugin relies on `lazy.nvim`'s ability to merge options tables from multiple sources. If you are not using `lazy.nvim`, you will need to handle configuration merging manually.
-- By project configuration using `.lazy.lua` only works `lazy.nvim`. (you might be able to work with `.nvim.lua` files to manually achieve the same thing)
-
-The `Ensure` command as well as on demand installation of missing parsers/formatters/linters should work fine without `lazy.nvim`.
-
-### Running tests
-
-This plugin includes a small busted test suite.
-
-  ```bash
-  scripts/test.lua
-  ```
+Not strictly, but `ensure.nvim` is designed for it. Without `lazy.nvim`, you'll need to:
+- Ensure dependencies load before `ensure.nvim`
+- Handle configuration merging manually
+- Use `.nvim.lua` instead of `.lazy.lua` for project configs
 
 ## Acknowledgements
 
-First, thanks to [@folke](https://github.com/folke) for his amazing work which made:
+Thanks to [@folke](https://github.com/folke) for his amazing work which made:
 
 - this plugin possible
 - my Neovim configuration so much easier to manage
