@@ -3,9 +3,11 @@ local util = require("ensure.util")
 
 local M = {}
 
+---@alias ensure.AutoIgnore string[]|table<string, string[]|"*">
+
 ---@class ensure.AutoConfig
 ---@field enable boolean Enable auto-detection for filetypes with no configured tool
----@field ignore string[] Tools to ignore in auto-detection mode
+---@field ignore ensure.AutoIgnore Tools to ignore in auto-detection mode (global list or per-filetype)
 ---@field multi boolean If true, prompt user to select when multiple tools match
 
 ---@alias ensure.Auto boolean|ensure.AutoConfig
@@ -28,10 +30,98 @@ function M.normalize(auto, defaults)
     if type(auto) == "boolean" then
         return vim.tbl_extend("force", base, { enable = auto })
     elseif type(auto) == "table" then
-        return vim.tbl_extend("force", base, auto)
+        -- Deep merge ignore tables if both are tables with filetype keys
+        local result = vim.tbl_extend("force", base, auto)
+        -- If user provided ignore, merge with base ignore
+        if auto.ignore and base.ignore then
+            result.ignore = M.merge_ignore(base.ignore, auto.ignore)
+        end
+        return result
     else
         return vim.deepcopy(base)
     end
+end
+
+---Merge two ignore configs
+---Handles mixed table format: { "global1", "global2", javascript = { "prettier" }, markdown = "*" }
+---@param base ensure.AutoIgnore Base ignore config (from defaults)
+---@param override ensure.AutoIgnore Override ignore config (from user)
+---@return ensure.AutoIgnore Merged ignore config
+function M.merge_ignore(base, override)
+    -- If override is empty, return base
+    if vim.tbl_isempty(override) then
+        return vim.deepcopy(base)
+    end
+
+    -- If base is empty, return override
+    if vim.tbl_isempty(base) then
+        return vim.deepcopy(override)
+    end
+
+    local result = vim.deepcopy(base)
+
+    -- Merge global ignores (list items / numeric keys)
+    for _, v in ipairs(override) do
+        if not vim.list_contains(result, v) then
+            table.insert(result, v)
+        end
+    end
+
+    -- Merge filetype-specific ignores (string keys)
+    for ft, tools in pairs(override) do
+        if type(ft) == "string" then
+            if tools == "*" then
+                result[ft] = "*"
+            elseif result[ft] == "*" then
+                -- Keep the disable
+                result[ft] = "*"
+            elseif type(result[ft]) == "table" then
+                -- Merge tool lists
+                for _, tool in ipairs(tools) do
+                    if not vim.list_contains(result[ft], tool) then
+                        table.insert(result[ft], tool)
+                    end
+                end
+            else
+                result[ft] = vim.deepcopy(tools)
+            end
+        end
+    end
+
+    return result
+end
+
+---Check if a tool should be ignored for a filetype
+---Supports mixed table format: { "global1", "global2", javascript = { "prettier" }, markdown = "*" }
+---@param ignore ensure.AutoIgnore The ignore config
+---@param tool string The tool name
+---@param ft string The filetype
+---@return boolean True if the tool should be ignored
+function M.should_ignore(ignore, tool, ft)
+    -- Check filetype-specific ignore (string keys)
+    local ft_ignore = ignore[ft]
+    if ft_ignore == "*" then
+        return true -- Disable auto for this filetype entirely
+    elseif type(ft_ignore) == "table" and vim.list_contains(ft_ignore, tool) then
+        return true
+    end
+
+    -- Check global ignore (list items / numeric keys)
+    for i, v in ipairs(ignore) do
+        if v == tool then
+            return true
+        end
+    end
+
+    return false
+end
+
+---Check if auto-detection is disabled for a filetype
+---@param ignore ensure.AutoIgnore The ignore config
+---@param ft string The filetype
+---@return boolean True if auto-detection is disabled for this filetype
+function M.is_disabled_for_ft(ignore, ft)
+    return ignore[ft] == "*"
 end
 
 ---@class ensure.AutoEntry
@@ -126,6 +216,11 @@ end
 ---Guess and potentially auto-enable a tool for a filetype
 ---@param ft string The filetype
 function AutoManager:guess_for_filetype(ft)
+    -- Check if auto-detection is disabled for this filetype
+    if M.is_disabled_for_ft(self.config.ignore, ft) then
+        return
+    end
+
     -- Re-check if a tool is now configured (may have changed during defer)
     if self.opts.is_configured(ft) then
         return
@@ -136,7 +231,7 @@ function AutoManager:guess_for_filetype(ft)
 
     -- Filter out ignored tools
     available = vim.tbl_filter(function(entry)
-        return not vim.list_contains(self.config.ignore, entry.tool)
+        return not M.should_ignore(self.config.ignore, entry.tool, ft)
     end, available)
 
     if #available == 0 then

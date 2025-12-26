@@ -86,11 +86,12 @@ describe("ensure.auto", function()
             assert.is_true(result.multi)
         end)
 
-        it("user config overrides plugin-specific defaults", function()
+        it("user config is merged with plugin-specific defaults", function()
             local result = auto.normalize({ ignore = { "custom" } }, { ignore = { "copilot", "ltex" } })
 
             assert.is_table(result)
-            assert.same({ "custom" }, result.ignore)
+            -- User ignore list is merged with defaults
+            assert.same({ "copilot", "ltex", "custom" }, result.ignore)
         end)
 
         it("returns deep copy to avoid mutation", function()
@@ -99,6 +100,142 @@ describe("ensure.auto", function()
 
             result1.enable = true
             assert.is_false(result2.enable)
+        end)
+    end)
+
+    describe("should_ignore", function()
+        it("returns true for tool in global list", function()
+            local ignore = { "prettier", "biome" }
+            assert.is_true(auto.should_ignore(ignore, "prettier", "javascript"))
+        end)
+
+        it("returns false for tool not in global list", function()
+            local ignore = { "prettier" }
+            assert.is_false(auto.should_ignore(ignore, "biome", "javascript"))
+        end)
+
+        it("returns true for tool in filetype-specific list", function()
+            local ignore = { javascript = { "prettier" } }
+            assert.is_true(auto.should_ignore(ignore, "prettier", "javascript"))
+        end)
+
+        it("returns false for tool not in filetype-specific list", function()
+            local ignore = { javascript = { "prettier" } }
+            assert.is_false(auto.should_ignore(ignore, "biome", "javascript"))
+        end)
+
+        it("returns false when filetype has no ignore list", function()
+            local ignore = { javascript = { "prettier" } }
+            assert.is_false(auto.should_ignore(ignore, "prettier", "python"))
+        end)
+
+        it("returns true for any tool when filetype is disabled with '*'", function()
+            local ignore = { markdown = "*" }
+            assert.is_true(auto.should_ignore(ignore, "prettier", "markdown"))
+            assert.is_true(auto.should_ignore(ignore, "any_tool", "markdown"))
+        end)
+
+        it("returns false for other filetypes when one is disabled", function()
+            local ignore = { markdown = "*" }
+            assert.is_false(auto.should_ignore(ignore, "prettier", "javascript"))
+        end)
+
+        it("returns true for tool in global list items", function()
+            local ignore = { "codespell", "typos" }
+            assert.is_true(auto.should_ignore(ignore, "codespell", "python"))
+            assert.is_true(auto.should_ignore(ignore, "typos", "javascript"))
+        end)
+
+        it("checks both filetype-specific and global list items", function()
+            local ignore = {
+                "codespell",
+                python = { "pylint" },
+            }
+            assert.is_true(auto.should_ignore(ignore, "codespell", "python"))
+            assert.is_true(auto.should_ignore(ignore, "pylint", "python"))
+            assert.is_false(auto.should_ignore(ignore, "ruff", "python"))
+        end)
+    end)
+
+    describe("is_disabled_for_ft", function()
+        it("returns false for list format", function()
+            local ignore = { "prettier" }
+            assert.is_false(auto.is_disabled_for_ft(ignore, "javascript"))
+        end)
+
+        it("returns true when filetype is disabled with '*'", function()
+            local ignore = { markdown = "*" }
+            assert.is_true(auto.is_disabled_for_ft(ignore, "markdown"))
+        end)
+
+        it("returns false for other filetypes", function()
+            local ignore = { markdown = "*" }
+            assert.is_false(auto.is_disabled_for_ft(ignore, "javascript"))
+        end)
+
+        it("returns false when filetype has tool list", function()
+            local ignore = { javascript = { "prettier" } }
+            assert.is_false(auto.is_disabled_for_ft(ignore, "javascript"))
+        end)
+    end)
+
+    describe("merge_ignore", function()
+        it("returns base when override is empty", function()
+            local base = { "prettier" }
+            local override = {}
+            assert.same({ "prettier" }, auto.merge_ignore(base, override))
+        end)
+
+        it("returns override when base is empty", function()
+            local base = {}
+            local override = { "biome" }
+            assert.same({ "biome" }, auto.merge_ignore(base, override))
+        end)
+
+        it("concatenates two lists with unique values", function()
+            local base = { "prettier", "biome" }
+            local override = { "biome", "eslint" }
+            assert.same({ "prettier", "biome", "eslint" }, auto.merge_ignore(base, override))
+        end)
+
+        it("merges two filetype tables", function()
+            local base = { python = { "pylint" } }
+            local override = { javascript = { "prettier" } }
+            local result = auto.merge_ignore(base, override)
+            assert.same({ "pylint" }, result.python)
+            assert.same({ "prettier" }, result.javascript)
+        end)
+
+        it("merges tool lists for same filetype", function()
+            local base = { python = { "pylint" } }
+            local override = { python = { "mypy" } }
+            local result = auto.merge_ignore(base, override)
+            assert.same({ "pylint", "mypy" }, result.python)
+        end)
+
+        it("override '*' takes precedence", function()
+            local base = { markdown = { "prettier" } }
+            local override = { markdown = "*" }
+            local result = auto.merge_ignore(base, override)
+            assert.equals("*", result.markdown)
+        end)
+
+        it("merges global list with filetype-specific ignores", function()
+            local base = { "prettier" }
+            local override = { python = { "pylint" } }
+            local result = auto.merge_ignore(base, override)
+            assert.equals("prettier", result[1])
+            assert.same({ "pylint" }, result.python)
+        end)
+
+        it("merges mixed tables with both global and filetype-specific", function()
+            local base = { "codespell", python = { "pylint" } }
+            local override = { "typos", javascript = { "prettier" } }
+            local result = auto.merge_ignore(base, override)
+            assert.equals("codespell", result[1])
+            assert.equals("typos", result[2])
+            assert.same({ "pylint" }, result.python)
+            assert.same({ "prettier" }, result.javascript)
         end)
     end)
 
@@ -319,6 +456,91 @@ describe("ensure.auto", function()
                 manager:trigger("python")
 
                 assert.is_false(was_called)
+            end)
+
+            it("filters out filetype-specific ignored tools", function()
+                manager.config = auto.normalize({
+                    enable = true,
+                    ignore = { javascript = { "prettier" } },
+                })
+                find_available_stub = function()
+                    return {
+                        { tool = "biome", package = "biome" },
+                        { tool = "prettier", package = "prettier" },
+                    }
+                end
+                local configured_entry
+                configure_stub = function(entry)
+                    configured_entry = entry
+                end
+
+                manager:trigger("javascript")
+
+                -- Should only enable biome, ignoring prettier for javascript
+                assert.same({ tool = "biome", package = "biome" }, configured_entry)
+            end)
+
+            it("does not filter tool for other filetypes", function()
+                manager.config = auto.normalize({
+                    enable = true,
+                    ignore = { javascript = { "prettier" } },
+                })
+                find_available_stub = function()
+                    return {
+                        { tool = "prettier", package = "prettier" },
+                    }
+                end
+                local configured_entry
+                configure_stub = function(entry)
+                    configured_entry = entry
+                end
+
+                manager:trigger("css")
+
+                -- prettier is not ignored for css, only for javascript
+                assert.same({ tool = "prettier", package = "prettier" }, configured_entry)
+            end)
+
+            it("does nothing when filetype is disabled with '*'", function()
+                manager.config = auto.normalize({
+                    enable = true,
+                    ignore = { markdown = "*" },
+                })
+                find_available_stub = function()
+                    return {
+                        { tool = "prettier", package = "prettier" },
+                    }
+                end
+                local was_called = false
+                configure_stub = function()
+                    was_called = true
+                end
+
+                manager:trigger("markdown")
+
+                assert.is_false(was_called)
+            end)
+
+            it("filters global list items for all filetypes", function()
+                manager.config = auto.normalize({
+                    enable = true,
+                    ignore = { "codespell" },
+                })
+                find_available_stub = function()
+                    return {
+                        { tool = "ruff", package = "ruff" },
+                        { tool = "codespell", package = "codespell" },
+                    }
+                end
+                local configured_entry
+                configure_stub = function(entry)
+                    configured_entry = entry
+                end
+
+                manager:trigger("python")
+
+                -- codespell should be filtered out globally
+                assert.same({ tool = "ruff", package = "ruff" }, configured_entry)
             end)
         end)
 

@@ -130,7 +130,20 @@ describe("ensure.plugin.lint", function()
 
             assert.is_table(plugin.auto.config)
             assert.is_true(plugin.auto.config.enable)
-            assert.same({ "pylint" }, plugin.auto.config.ignore)
+            -- User ignore list is merged with defaults
+            assert.same({
+                "alex",
+                "codespell",
+                "cspell",
+                "misspell",
+                "proselint",
+                "textlint",
+                "typos",
+                "vale",
+                "woke",
+                "write_good",
+                "pylint",
+            }, plugin.auto.config.ignore)
             assert.is_true(plugin.auto.config.multi) -- default
         end)
 

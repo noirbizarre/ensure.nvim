@@ -107,7 +107,13 @@ describe("ensure.plugin.conform", function()
 
             assert.is_table(plugin.auto.config)
             assert.is_true(plugin.auto.config.enable)
-            assert.same({ "prettier" }, plugin.auto.config.ignore)
+            -- User ignore list is merged with defaults
+            assert.same({
+                "codespell",
+                "misspell",
+                "typos",
+                "prettier",
+            }, plugin.auto.config.ignore)
             assert.is_true(plugin.auto.config.multi) -- default
         end)
 

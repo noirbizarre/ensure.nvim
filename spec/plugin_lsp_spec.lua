@@ -135,7 +135,19 @@ describe("ensure.plugin.lsp", function()
 
             assert.is_table(plugin.auto.config)
             assert.is_true(plugin.auto.config.enable)
-            assert.same({ "custom_lsp" }, plugin.auto.config.ignore)
+            -- User ignore list is merged with defaults
+            assert.same({
+                "copilot",
+                "harper_ls",
+                "grammarly",
+                "ltex",
+                "ltex_plus",
+                "prosemd_lsp",
+                "textlsp",
+                "typos_lsp",
+                "vale_ls",
+                "custom_lsp",
+            }, plugin.auto.config.ignore)
             assert.is_true(plugin.auto.config.multi) -- default
         end)
 
