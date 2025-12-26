@@ -48,14 +48,20 @@ Default configuration is empty and just load all provided plugins:
     --- Treesitter parsers to install
     parsers = {},
     --- `conform.nvim` formatters by filetypes
-    formatters = {},
+    formatters = {
+        auto = false, -- Auto-detect formatters (boolean or table)
+    },
     --- `nvim-lint` linters by filetypes
-    linters = {},
+    linters = {
+        auto = false, -- Auto-detect linters (boolean or table)
+    },
     lsp = {
         --- LSP servers to enable
         enable = {},
         --- LSP servers to disable (take precedence over `enable`)
         disable = {},
+        --- Auto-detect LSP servers
+        auto = false,
     },
     ignore = {
         --- Mason packages to ignore (never install)
@@ -196,6 +202,70 @@ Depending on the enabled plugins, `ensure.nvim` will automatically install missi
 - Linters.
 - Formatters.
 - Tree-sitter parsers.
+
+### Auto-detection mode
+
+`ensure.nvim` can automatically detect and suggest formatters, linters, and LSP servers for filetypes that don't have any configured. This uses Mason's registry to find available tools for each filetype.
+
+Enable auto-detection with a simple boolean:
+
+```lua
+{
+    "noirbizarre/ensure.nvim",
+    opts = {
+        formatters = {
+            auto = true,
+        },
+        linters = {
+            auto = true,
+        },
+        lsp = {
+            auto = true,
+        },
+    },
+}
+```
+
+Or with fine-grained control using a table:
+
+```lua
+{
+    "noirbizarre/ensure.nvim",
+    opts = {
+        formatters = {
+            auto = {
+                enable = true,
+                ignore = { "prettier" }, -- Never auto-suggest these tools
+                multi = true,            -- Prompt when multiple options exist (default: true)
+            },
+        },
+        linters = {
+            auto = {
+                enable = true,
+                ignore = { "pylint" },
+                multi = false, -- Silently skip when multiple options exist
+            },
+        },
+        lsp = {
+            auto = {
+                enable = true,
+                ignore = { "copilot", "ltex" }, -- Default ignores included
+                multi = true,
+            },
+        },
+    },
+}
+```
+
+When `auto` is enabled:
+
+- If a single tool is available for a filetype, it's automatically installed and enabled
+- If multiple tools are available and `multi = true`, a selection prompt appears
+- If multiple tools are available and `multi = false`, no action is taken
+- Tools in the `ignore` list are never suggested
+
+> [!NOTE]
+> Auto-detected tools are enabled for the current session only. Add them to your config for persistence.
 
 ### By project configuration
 
