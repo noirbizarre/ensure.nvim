@@ -229,10 +229,10 @@ function M:build_mappings()
         end
 
         -- Build tools_by_filetype mapping from languages and categories fields
-        -- Only include packages that have Formatter or Linter category
+        -- Include packages that have Formatter, Linter, or LSP category
         if spec.languages and spec.categories and spec.bin then
             local dominated_categories = vim.iter(spec.categories):any(function(cat)
-                return cat == "Formatter" or cat == "Linter"
+                return cat == "Formatter" or cat == "Linter" or cat == "LSP"
             end)
             if dominated_categories then
                 -- Get the first tool name from bin field
@@ -295,7 +295,7 @@ end
 ---Returns LSPs that have configurations with matching filetypes and are available in Mason
 ---Uses vim.lsp.config[name] to trigger lazy-loading of LSP configs from runtime path
 ---@param ft string The filetype to search for
----@return {lsp: string, package: string}[] List of available LSP entries
+---@return ensure.AutoEntry[] List of available LSP entries
 function M:find_lsps_for_filetype(ft)
     self:build_mappings()
     local results = {}
@@ -308,7 +308,7 @@ function M:find_lsps_for_filetype(ft)
         end)
         if ok and config and config.filetypes and vim.list_contains(config.filetypes, ft) then
             table.insert(results, {
-                lsp = lsp_name,
+                tool = lsp_name,
                 package = package_name,
             })
         end
@@ -320,7 +320,7 @@ end
 ---Find available formatters for a filetype from Mason registry
 ---Returns formatters that have the "Formatter" category and matching language
 ---@param ft string The filetype to search for
----@return {tool: string, package: string}[] List of available formatter entries
+---@return ensure.AutoEntry[] List of available formatter entries
 function M:find_formatters_for_filetype(ft)
     self:build_mappings()
     local results = {}
@@ -341,7 +341,7 @@ end
 ---Find available linters for a filetype from Mason registry
 ---Returns linters that have the "Linter" category and matching language
 ---@param ft string The filetype to search for
----@return {tool: string, package: string}[] List of available linter entries
+---@return ensure.AutoEntry[] List of available linter entries
 function M:find_linters_for_filetype(ft)
     self:build_mappings()
     local results = {}

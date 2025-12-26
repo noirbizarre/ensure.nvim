@@ -458,7 +458,7 @@ describe("ensure.plugin.mason #plugin #mason", function()
             local results = plugin:find_lsps_for_filetype("lua")
 
             assert.same(1, #results)
-            assert.same("lua_ls", results[1].lsp)
+            assert.same("lua_ls", results[1].tool)
             assert.same("lua-language-server", results[1].package)
         end)
 
@@ -522,7 +522,7 @@ describe("ensure.plugin.mason #plugin #mason", function()
             local results = plugin:find_lsps_for_filetype("lua")
 
             assert.same(1, #results)
-            assert.same("lua_ls", results[1].lsp)
+            assert.same("lua_ls", results[1].tool)
         end)
 
         it("find_lsps_for_filetype ignores LSPs not in Mason registry", function()
@@ -544,7 +544,7 @@ describe("ensure.plugin.mason #plugin #mason", function()
             local results = plugin:find_lsps_for_filetype("lua")
 
             assert.same(1, #results)
-            assert.same("lua_ls", results[1].lsp)
+            assert.same("lua_ls", results[1].tool)
         end)
 
         it("find_lsps_for_filetype handles LSP config loading errors gracefully", function()
@@ -569,7 +569,7 @@ describe("ensure.plugin.mason #plugin #mason", function()
 
             -- Should still return lua_ls, gracefully skipping the broken one
             assert.same(1, #results)
-            assert.same("lua_ls", results[1].lsp)
+            assert.same("lua_ls", results[1].tool)
         end)
 
         it("build_mappings extracts tools_by_filetype from languages and categories", function()
@@ -593,7 +593,7 @@ describe("ensure.plugin.mason #plugin #mason", function()
                     languages = { "JavaScript", "TypeScript" },
                     categories = { "Linter" },
                 },
-                -- Package without Formatter/Linter category should be ignored
+                -- LSP packages should also be included in tools_by_filetype
                 {
                     name = "lua-language-server",
                     bin = { ["lua-language-server"] = "cargo:lua-ls" },
@@ -613,7 +613,7 @@ describe("ensure.plugin.mason #plugin #mason", function()
 
             -- Check tools_by_filetype mapping
             assert.is_not_nil(plugin._tools_by_filetype["lua"])
-            assert.same(1, #plugin._tools_by_filetype["lua"])
+            assert.same(2, #plugin._tools_by_filetype["lua"]) -- stylua + lua-language-server
             assert.same("stylua", plugin._tools_by_filetype["lua"][1].tool)
 
             assert.is_not_nil(plugin._tools_by_filetype["luau"])

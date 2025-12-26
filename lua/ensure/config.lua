@@ -1,16 +1,9 @@
----@class LspAutoConfig
----@field enable boolean Enable auto-detection of LSPs for filetypes with no enabled LSP
----@field ignore string[] LSPs to ignore in auto-detection mode (not counted as "enabled", filtered from suggestions)
----@field multi boolean If true, prompt user to select when multiple LSPs match; if false, do nothing
+-- Import AutoConfig type from ensure.auto module
+-- ensure.AutoConfig and ensure.Auto are defined there
 
----@alias LspAuto boolean|LspAutoConfig
-
----@class ToolAutoConfig
----@field enable boolean Enable auto-detection of tools (formatters/linters) for filetypes with no configured tool
----@field ignore string[] Tools to ignore in auto-detection mode (filtered from suggestions)
----@field multi boolean If true, prompt user to select when multiple tools match; if false, do nothing
-
----@alias ToolAuto boolean|ToolAutoConfig
+-- Semantic aliases for documentation purposes
+---@alias LspAuto ensure.Auto Auto-detection config for LSP servers
+---@alias ToolAuto ensure.Auto Auto-detection config for formatters/linters
 
 ---@class LspConfig: {[string]: table|function}
 ---@field enable string[] List of LSP server names to ensure are installed via mason.nvim and enabled

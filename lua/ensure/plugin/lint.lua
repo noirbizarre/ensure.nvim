@@ -1,25 +1,28 @@
 local Plugin = require("ensure.plugin")
+local auto = require("ensure.auto")
 local mason = require("ensure.plugin.mason")
-local notify = require("ensure.notify")
 local util = require("ensure.util")
 
 ---@class ensure.LintPlugin : ensure.Plugin
----@field auto ToolAutoConfig Normalized auto-detection configuration
+---@field auto ensure.AutoManager Auto-manager instance
 local M = Plugin:new()
 
----Default values for auto-detection config
----@type ToolAutoConfig
-local AUTO_DEFAULTS = {
-    enable = false,
-    ignore = {},
-    multi = true,
+---Default ignore list for linter auto-detection
+---These are typo/spelling/grammar checkers that shouldn't trigger auto-detection
+local LINTER_DEFAULT_IGNORE = {
+    "alex",
+    "codespell",
+    "cspell",
+    "misspell",
+    "proselint",
+    "textlint",
+    "typos",
+    "vale",
+    "woke",
+    "write_good",
 }
 
 local CONFIG_KEYS = { "auto" }
-
--- Prompt queue state (module-level)
-local prompts = util.Queue:new()
-local prompt_active = false
 
 ---Resolve a linter name to a Mason package name
 ---Uses the linter's command to find the corresponding Mason package
@@ -72,26 +75,31 @@ function M:resolve_package(linter_name)
     return mason:resolve_tool(exe_name)
 end
 
----Normalize linters.auto config to a table
----@param auto boolean|ToolAutoConfig|nil
----@return ToolAutoConfig
-local function normalize_auto(auto)
-    if type(auto) == "boolean" then
-        return vim.tbl_extend("force", AUTO_DEFAULTS, { enable = auto })
-    elseif type(auto) == "table" then
-        return vim.tbl_extend("force", AUTO_DEFAULTS, auto)
-    else
-        return vim.deepcopy(AUTO_DEFAULTS)
-    end
-end
-
 function M:setup(opts)
     self.is_installed, _ = pcall(require, "lint")
     if not self.is_installed then
         return
     end
 
-    self.auto = normalize_auto(opts.linters.auto)
+    -- Create auto-manager with plugin-specific callbacks
+    self.auto = auto.AutoManager:new({
+        config = opts.linters.auto,
+        defaults = { ignore = LINTER_DEFAULT_IGNORE },
+        mason = mason,
+        kind = "Linter",
+        find_available = function(ft)
+            return mason:find_linters_for_filetype(ft)
+        end,
+        is_configured = function(ft)
+            local lint = require("lint")
+            local configured = lint.linters_by_ft[ft]
+            return configured and #configured > 0
+        end,
+        configure = function(entry, ft)
+            local lint = require("lint")
+            lint.linters_by_ft[ft] = { entry.tool }
+        end,
+    })
 
     local lint = require("lint")
     for ft, linters in pairs(opts.linters) do
@@ -134,101 +142,10 @@ function M:autoinstall(ft)
         mason:install_packages(packages)
     end
 
-    -- Auto-detection: defer to allow linters to resolve
-    if not has_configured_linter and self.auto.enable and not prompts:seen(ft) then
-        prompts:enqueue(ft)
-        vim.defer_fn(function()
-            self:guess_autoinstalls()
-        end, 500)
+    -- Auto-detection: trigger if no linter is configured
+    if not has_configured_linter then
+        self.auto:trigger(ft)
     end
-end
-
-function M:guess_autoinstalls()
-    if prompt_active then
-        return
-    end
-
-    prompt_active = true
-
-    coroutine.resume(coroutine.create(function()
-        while not prompts:is_empty() do
-            local ft = prompts:dequeue()
-            self:guess_autoinstall_for_filetype(ft)
-        end
-
-        prompt_active = false
-    end))
-end
-
-function M:guess_autoinstall_for_filetype(ft)
-    local lint = require("lint")
-
-    -- Re-check if any linter is now configured for this filetype
-    local configured = lint.linters_by_ft[ft]
-    if configured and #configured > 0 then
-        return -- Linter is configured, don't auto-detect
-    end
-
-    -- Find available linters for this filetype from Mason
-    local available = mason:find_linters_for_filetype(ft)
-
-    -- Filter out ignored linters from available options
-    available = vim.tbl_filter(function(entry)
-        return not vim.list_contains(self.auto.ignore, entry.tool)
-    end, available)
-
-    if #available == 0 then
-        return
-    end
-
-    if #available == 1 then
-        -- Single match: auto-install and enable
-        self:auto_enable_linter(available[1], ft)
-    elseif self.auto.multi then
-        -- Multiple matches and multi is enabled: prompt user to select
-        self:prompt_linter_selection(available, ft)
-    end
-end
-
----Auto-enable a single linter for a filetype
----@param entry {tool: string, package: string}
----@param ft string
-function M:auto_enable_linter(entry, ft)
-    notify(("Auto-enabling `%s` for filetype `%s`"):format(entry.tool, ft))
-    mason:try_install(entry.package, function()
-        local lint = require("lint")
-        lint.linters_by_ft[ft] = { entry.tool }
-        notify(("Linter `%s` enabled. Add it to your config for persistence."):format(entry.tool))
-    end)
-end
-
----@async
----Prompt user to select a linter from multiple options (queued)
----@param available {tool: string, package: string}[]
----@param ft string
-function M:prompt_linter_selection(available, ft)
-    local coro = assert(coroutine.running())
-
-    vim.schedule(function()
-        vim.ui.select(available, {
-            prompt = ("Select linter for %s:"):format(ft),
-            format_item = function(item)
-                return item.tool
-            end,
-        }, function(choice)
-            coroutine.resume(coro, choice)
-        end)
-    end)
-    local choice = coroutine.yield()
-    if choice then
-        self:auto_enable_linter(choice, ft)
-    end
-end
-
----Only for testing: clear prompt queue and reset active state
-function M:clear_prompt_queue()
-    prompts:clear()
-    prompt_active = false
 end
 
 M.command = "linters"

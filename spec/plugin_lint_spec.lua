@@ -2,6 +2,7 @@ local helpers = require("spec.helpers")
 local match = require("luassert.match")
 
 describe("ensure.plugin.lint", function()
+    local auto = require("ensure.auto")
     local mason = require("ensure.plugin.mason")
     local plugin = require("ensure.plugin.lint")
 
@@ -12,8 +13,8 @@ describe("ensure.plugin.lint", function()
         helpers.stub(vim, "defer_fn", function(fn, _)
             fn()
         end)
-        -- Reset prompt queue state between tests
-        plugin:clear_prompt_queue()
+        -- Reset all auto-detection state between tests
+        auto.reset()
     end)
 
     after_each(function()
@@ -68,10 +69,21 @@ describe("ensure.plugin.lint", function()
                 },
             })
 
-            assert.is_table(plugin.auto)
-            assert.is_true(plugin.auto.enable)
-            assert.same({}, plugin.auto.ignore)
-            assert.is_true(plugin.auto.multi)
+            assert.is_table(plugin.auto.config)
+            assert.is_true(plugin.auto.config.enable)
+            assert.same({
+                "alex",
+                "codespell",
+                "cspell",
+                "misspell",
+                "proselint",
+                "textlint",
+                "typos",
+                "vale",
+                "woke",
+                "write_good",
+            }, plugin.auto.config.ignore)
+            assert.is_true(plugin.auto.config.multi)
         end)
 
         it("normalizes boolean auto=false to table with defaults", function()
@@ -85,10 +97,21 @@ describe("ensure.plugin.lint", function()
                 },
             })
 
-            assert.is_table(plugin.auto)
-            assert.is_false(plugin.auto.enable)
-            assert.same({}, plugin.auto.ignore)
-            assert.is_true(plugin.auto.multi)
+            assert.is_table(plugin.auto.config)
+            assert.is_false(plugin.auto.config.enable)
+            assert.same({
+                "alex",
+                "codespell",
+                "cspell",
+                "misspell",
+                "proselint",
+                "textlint",
+                "typos",
+                "vale",
+                "woke",
+                "write_good",
+            }, plugin.auto.config.ignore)
+            assert.is_true(plugin.auto.config.multi)
         end)
 
         it("merges auto table config with defaults", function()
@@ -105,10 +128,10 @@ describe("ensure.plugin.lint", function()
                 },
             })
 
-            assert.is_table(plugin.auto)
-            assert.is_true(plugin.auto.enable)
-            assert.same({ "pylint" }, plugin.auto.ignore)
-            assert.is_true(plugin.auto.multi) -- default
+            assert.is_table(plugin.auto.config)
+            assert.is_true(plugin.auto.config.enable)
+            assert.same({ "pylint" }, plugin.auto.config.ignore)
+            assert.is_true(plugin.auto.config.multi) -- default
         end)
 
         it("allows disabling multi in auto config", function()
@@ -125,9 +148,9 @@ describe("ensure.plugin.lint", function()
                 },
             })
 
-            assert.is_table(plugin.auto)
-            assert.is_true(plugin.auto.enable)
-            assert.is_false(plugin.auto.multi)
+            assert.is_table(plugin.auto.config)
+            assert.is_true(plugin.auto.config.enable)
+            assert.is_false(plugin.auto.config.multi)
         end)
 
         it("does not register 'auto' as a filetype", function()
@@ -181,7 +204,7 @@ describe("ensure.plugin.lint", function()
 
             mason.is_enabled = true
             plugin.is_installed = true
-            plugin.auto = { enable = false, ignore = {}, multi = true }
+            plugin.auto.config = { enable = false, ignore = {}, multi = true }
             helpers.stub(mason, "install_packages")
 
             -- Mock resolve_package to return expected mappings
@@ -198,7 +221,7 @@ describe("ensure.plugin.lint", function()
         it("does nothing when lint not installed", function()
             plugin.is_installed = false
             mason.is_enabled = true
-            plugin.auto = { enable = false, ignore = {}, multi = true }
+            plugin.auto.config = { enable = false, ignore = {}, multi = true }
             helpers.stub(mason, "install_packages")
 
             plugin:autoinstall("lua")
@@ -209,7 +232,7 @@ describe("ensure.plugin.lint", function()
         it("does nothing when mason not enabled", function()
             plugin.is_installed = true
             mason.is_enabled = false
-            plugin.auto = { enable = false, ignore = {}, multi = true }
+            plugin.auto.config = { enable = false, ignore = {}, multi = true }
             helpers.stub(mason, "install_packages")
 
             plugin:autoinstall("lua")
@@ -226,7 +249,7 @@ describe("ensure.plugin.lint", function()
 
             mason.is_enabled = true
             plugin.is_installed = true
-            plugin.auto = { enable = false, ignore = {}, multi = true }
+            plugin.auto.config = { enable = false, ignore = {}, multi = true }
             helpers.stub(mason, "install_packages")
             helpers.stub(mason, "find_linters_for_filetype")
 
@@ -242,7 +265,7 @@ describe("ensure.plugin.lint", function()
 
             mason.is_enabled = true
             plugin.is_installed = true
-            plugin.auto = { enable = true, ignore = {}, multi = true }
+            plugin.auto.config = { enable = true, ignore = {}, multi = true }
             helpers.stub(mason, "install_packages")
             helpers.stub(mason, "find_linters_for_filetype")
             helpers.stub(plugin, "resolve_package", nil)
@@ -259,7 +282,7 @@ describe("ensure.plugin.lint", function()
 
             mason.is_enabled = true
             plugin.is_installed = true
-            plugin.auto = { enable = true, ignore = {}, multi = true }
+            plugin.auto.config = { enable = true, ignore = {}, multi = true }
             helpers.stub(mason, "install_packages")
             helpers.stub(mason, "find_linters_for_filetype", {})
 
@@ -275,18 +298,18 @@ describe("ensure.plugin.lint", function()
 
             mason.is_enabled = true
             plugin.is_installed = true
-            plugin.auto = { enable = true, ignore = {}, multi = true }
+            plugin.auto.config = { enable = true, ignore = {}, multi = true }
             helpers.stub(mason, "install_packages")
             helpers.stub(mason, "find_linters_for_filetype", {
                 { tool = "selene", package = "selene" },
             })
-            helpers.stub(plugin, "auto_enable_linter")
+            helpers.stub(plugin.auto, "enable")
 
             plugin:autoinstall("lua")
 
             assert
-                .stub(plugin.auto_enable_linter)
-                .was_called_with(match.is_ref(plugin), { tool = "selene", package = "selene" }, "lua")
+                .stub(plugin.auto.enable)
+                .was_called_with(match.is_ref(plugin.auto), { tool = "selene", package = "selene" }, "lua")
         end)
 
         it("prompts user selection when multiple linters are available and multi is true", function()
@@ -296,17 +319,18 @@ describe("ensure.plugin.lint", function()
 
             mason.is_enabled = true
             plugin.is_installed = true
-            plugin.auto = { enable = true, ignore = {}, multi = true }
+            plugin.auto.config = { enable = true, ignore = {}, multi = true }
             helpers.stub(mason, "install_packages")
             helpers.stub(mason, "find_linters_for_filetype", {
                 { tool = "pylint", package = "pylint" },
                 { tool = "ruff", package = "ruff" },
             })
-            helpers.stub(plugin, "prompt_linter_selection")
+            -- Stub _detector.prompt_selection to verify it's called with correct args
+            helpers.stub(plugin.auto, "prompt_selection")
 
             plugin:autoinstall("python")
 
-            assert.stub(plugin.prompt_linter_selection).was_called_with(match.is_ref(plugin), {
+            assert.stub(plugin.auto.prompt_selection).was_called_with(match.is_ref(plugin.auto), {
                 { tool = "pylint", package = "pylint" },
                 { tool = "ruff", package = "ruff" },
             }, "python")
@@ -319,19 +343,19 @@ describe("ensure.plugin.lint", function()
 
             mason.is_enabled = true
             plugin.is_installed = true
-            plugin.auto = { enable = true, ignore = {}, multi = false }
+            plugin.auto.config = { enable = true, ignore = {}, multi = false }
             helpers.stub(mason, "install_packages")
             helpers.stub(mason, "find_linters_for_filetype", {
                 { tool = "pylint", package = "pylint" },
                 { tool = "ruff", package = "ruff" },
             })
-            helpers.stub(plugin, "auto_enable_linter")
-            helpers.stub(plugin, "prompt_linter_selection")
+            helpers.stub(plugin.auto, "enable")
+            helpers.stub(plugin.auto, "prompt_selection")
 
             plugin:autoinstall("python")
 
-            assert.stub(plugin.auto_enable_linter).was_not_called()
-            assert.stub(plugin.prompt_linter_selection).was_not_called()
+            assert.stub(plugin.auto.enable).was_not_called()
+            assert.stub(plugin.auto.prompt_selection).was_not_called()
         end)
 
         it("filters ignored linters from auto-detection results", function()
@@ -341,20 +365,20 @@ describe("ensure.plugin.lint", function()
 
             mason.is_enabled = true
             plugin.is_installed = true
-            plugin.auto = { enable = true, ignore = { "pylint" }, multi = true }
+            plugin.auto.config = { enable = true, ignore = { "pylint" }, multi = true }
             helpers.stub(mason, "install_packages")
             helpers.stub(mason, "find_linters_for_filetype", {
                 { tool = "ruff", package = "ruff" },
                 { tool = "pylint", package = "pylint" },
             })
-            helpers.stub(plugin, "auto_enable_linter")
+            helpers.stub(plugin.auto, "enable")
 
             plugin:autoinstall("python")
 
             -- Should only auto-enable ruff, ignoring pylint
             assert
-                .stub(plugin.auto_enable_linter)
-                .was_called_with(match.is_ref(plugin), { tool = "ruff", package = "ruff" }, "python")
+                .stub(plugin.auto.enable)
+                .was_called_with(match.is_ref(plugin.auto), { tool = "ruff", package = "ruff" }, "python")
         end)
 
         it("does nothing when all available linters are ignored", function()
@@ -364,136 +388,24 @@ describe("ensure.plugin.lint", function()
 
             mason.is_enabled = true
             plugin.is_installed = true
-            plugin.auto = { enable = true, ignore = { "pylint", "ruff" }, multi = true }
+            plugin.auto.config = { enable = true, ignore = { "pylint", "ruff" }, multi = true }
             helpers.stub(mason, "install_packages")
             helpers.stub(mason, "find_linters_for_filetype", {
                 { tool = "pylint", package = "pylint" },
                 { tool = "ruff", package = "ruff" },
             })
-            helpers.stub(plugin, "auto_enable_linter")
-            helpers.stub(plugin, "prompt_linter_selection")
+            helpers.stub(plugin.auto, "enable")
+            helpers.stub(plugin.auto, "prompt_selection")
 
             plugin:autoinstall("python")
 
-            assert.stub(plugin.auto_enable_linter).was_not_called()
-            assert.stub(plugin.prompt_linter_selection).was_not_called()
+            assert.stub(plugin.auto.enable).was_not_called()
+            assert.stub(plugin.auto.prompt_selection).was_not_called()
         end)
     end)
 
-    describe("auto_enable_linter", function()
-        it("installs package and enables linter on success", function()
-            local lint = require("lint")
-            lint.linters_by_ft = {}
-
-            helpers.stub(mason, "try_install", function(_, _, callback)
-                callback()
-            end)
-
-            plugin:auto_enable_linter({ tool = "selene", package = "selene" }, "lua")
-
-            assert.stub(mason.try_install).was_called_with(match.is_ref(mason), "selene", match.is_function())
-            assert.same({ "selene" }, lint.linters_by_ft.lua)
-        end)
-    end)
-
-    describe("prompt_linter_selection", function()
-        -- Helper to call prompt_linter_selection inside a coroutine (as the function requires)
-        local function call_in_coroutine(fn)
-            local coro = coroutine.create(fn)
-            coroutine.resume(coro)
-            return coro
-        end
-
-        it("calls vim.ui.select with linter options and format_item", function()
-            -- Stub vim.schedule to execute immediately
-            helpers.stub(vim, "schedule", function(fn)
-                fn()
-            end)
-
-            local captured_items, captured_opts
-            helpers.stub(vim.ui, "select", function(items, opts, _)
-                captured_items = items
-                captured_opts = opts
-            end)
-
-            local available = {
-                { tool = "pylint", package = "pylint" },
-                { tool = "ruff", package = "ruff" },
-            }
-
-            call_in_coroutine(function()
-                plugin:prompt_linter_selection(available, "python")
-            end)
-
-            assert.stub(vim.ui.select).was_called()
-            assert.equals(2, #captured_items)
-            assert.equals("pylint", captured_items[1].tool)
-            assert.equals("ruff", captured_items[2].tool)
-            assert.matches("python", captured_opts.prompt)
-            -- Test format_item returns tool name
-            assert.equals("pylint", captured_opts.format_item(captured_items[1]))
-        end)
-
-        it("auto-enables selected linter when user makes a choice", function()
-            -- Stub vim.schedule to execute immediately
-            helpers.stub(vim, "schedule", function(fn)
-                fn()
-            end)
-
-            local select_callback
-            helpers.stub(vim.ui, "select", function(_, _, callback)
-                select_callback = callback
-            end)
-            helpers.stub(plugin, "auto_enable_linter")
-
-            local available = {
-                { tool = "pylint", package = "pylint" },
-                { tool = "ruff", package = "ruff" },
-            }
-            local ruff_entry = available[2]
-
-            local coro = call_in_coroutine(function()
-                plugin:prompt_linter_selection(available, "python")
-            end)
-
-            -- Simulate user selecting ruff entry
-            select_callback(ruff_entry)
-
-            -- Wait for coroutine to complete
-            assert.equals("dead", coroutine.status(coro))
-
-            assert.stub(plugin.auto_enable_linter).was_called_with(match.is_ref(plugin), ruff_entry, "python")
-        end)
-
-        it("does nothing when user cancels selection", function()
-            -- Stub vim.schedule to execute immediately
-            helpers.stub(vim, "schedule", function(fn)
-                fn()
-            end)
-
-            local select_callback
-            helpers.stub(vim.ui, "select", function(_, _, callback)
-                select_callback = callback
-            end)
-            helpers.stub(plugin, "auto_enable_linter")
-
-            local available = {
-                { tool = "pylint", package = "pylint" },
-            }
-
-            local coro = call_in_coroutine(function()
-                plugin:prompt_linter_selection(available, "python")
-            end)
-
-            -- Simulate user canceling (nil choice)
-            select_callback(nil)
-
-            -- Wait for coroutine to complete
-            assert.equals("dead", coroutine.status(coro))
-
-            assert.stub(plugin.auto_enable_linter).was_not_called()
-        end)
-    end)
+    -- Note: auto_enable_linter tests removed - functionality moved to ensure.auto module
+    -- and tested in spec/auto_spec.lua
 
     describe("install", function()
         it("installs all configured linters via mason", function()

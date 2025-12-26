@@ -2,6 +2,7 @@ local helpers = require("spec.helpers")
 local match = require("luassert.match")
 
 describe("ensure.plugin.lsp", function()
+    local auto = require("ensure.auto")
     local mason = require("ensure.plugin.mason")
     local plugin = require("ensure.plugin.lsp")
 
@@ -12,8 +13,8 @@ describe("ensure.plugin.lsp", function()
         helpers.stub(vim, "defer_fn", function(fn, _)
             fn()
         end)
-        -- Reset prompt queue state between tests
-        plugin:clear_prompt_queue()
+        -- Reset all auto-detection state between tests
+        auto.reset()
     end)
 
     after_each(function()
@@ -55,10 +56,20 @@ describe("ensure.plugin.lsp", function()
                 },
             })
 
-            assert.is_table(plugin.auto)
-            assert.is_true(plugin.auto.enable)
-            assert.same({ "copilot", "ltex", "ltex_plus" }, plugin.auto.ignore)
-            assert.is_true(plugin.auto.multi)
+            assert.is_table(plugin.auto.config)
+            assert.is_true(plugin.auto.config.enable)
+            assert.same({
+                "copilot",
+                "harper_ls",
+                "grammarly",
+                "ltex",
+                "ltex_plus",
+                "prosemd_lsp",
+                "textlsp",
+                "typos_lsp",
+                "vale_ls",
+            }, plugin.auto.config.ignore)
+            assert.is_true(plugin.auto.config.multi)
         end)
 
         it("normalizes boolean auto=false to table with defaults", function()
@@ -74,10 +85,20 @@ describe("ensure.plugin.lsp", function()
                 },
             })
 
-            assert.is_table(plugin.auto)
-            assert.is_false(plugin.auto.enable)
-            assert.same({ "copilot", "ltex", "ltex_plus" }, plugin.auto.ignore)
-            assert.is_true(plugin.auto.multi)
+            assert.is_table(plugin.auto.config)
+            assert.is_false(plugin.auto.config.enable)
+            assert.same({
+                "copilot",
+                "harper_ls",
+                "grammarly",
+                "ltex",
+                "ltex_plus",
+                "prosemd_lsp",
+                "textlsp",
+                "typos_lsp",
+                "vale_ls",
+            }, plugin.auto.config.ignore)
+            assert.is_true(plugin.auto.config.multi)
         end)
 
         it("defaults auto to disabled table when not specified", function()
@@ -92,8 +113,8 @@ describe("ensure.plugin.lsp", function()
                 },
             })
 
-            assert.is_table(plugin.auto)
-            assert.is_false(plugin.auto.enable)
+            assert.is_table(plugin.auto.config)
+            assert.is_false(plugin.auto.config.enable)
         end)
 
         it("merges auto table config with defaults", function()
@@ -112,10 +133,10 @@ describe("ensure.plugin.lsp", function()
                 },
             })
 
-            assert.is_table(plugin.auto)
-            assert.is_true(plugin.auto.enable)
-            assert.same({ "custom_lsp" }, plugin.auto.ignore)
-            assert.is_true(plugin.auto.multi) -- default
+            assert.is_table(plugin.auto.config)
+            assert.is_true(plugin.auto.config.enable)
+            assert.same({ "custom_lsp" }, plugin.auto.config.ignore)
+            assert.is_true(plugin.auto.config.multi) -- default
         end)
 
         it("allows disabling multi in auto config", function()
@@ -134,9 +155,9 @@ describe("ensure.plugin.lsp", function()
                 },
             })
 
-            assert.is_table(plugin.auto)
-            assert.is_true(plugin.auto.enable)
-            assert.is_false(plugin.auto.multi)
+            assert.is_table(plugin.auto.config)
+            assert.is_true(plugin.auto.config.enable)
+            assert.is_false(plugin.auto.config.multi)
         end)
     end)
 
@@ -298,7 +319,7 @@ describe("ensure.plugin.lsp", function()
     describe("autoinstall", function()
         it("installs LSP packages via mason for matching filetype", function()
             mason.is_enabled = true
-            plugin.auto = { enable = false, ignore = {}, multi = true }
+            plugin.auto.config = { enable = false, ignore = {}, multi = true }
             helpers.stub(mason, "install_packages")
 
             vim.lsp._enabled_configs = {
@@ -326,7 +347,7 @@ describe("ensure.plugin.lsp", function()
 
         it("does nothing when mason is not enabled", function()
             mason.is_enabled = false
-            plugin.auto = { enable = false, ignore = {}, multi = true }
+            plugin.auto.config = { enable = false, ignore = {}, multi = true }
             helpers.stub(mason, "install_packages")
 
             vim.lsp._enabled_configs = {
@@ -342,7 +363,7 @@ describe("ensure.plugin.lsp", function()
 
         it("handles missing resolved_config gracefully", function()
             mason.is_enabled = true
-            plugin.auto = { enable = false, ignore = {}, multi = true }
+            plugin.auto.config = { enable = false, ignore = {}, multi = true }
             helpers.stub(mason, "install_packages")
 
             vim.lsp._enabled_configs = {
@@ -356,7 +377,7 @@ describe("ensure.plugin.lsp", function()
 
         it("handles missing filetypes gracefully", function()
             mason.is_enabled = true
-            plugin.auto = { enable = false, ignore = {}, multi = true }
+            plugin.auto.config = { enable = false, ignore = {}, multi = true }
             helpers.stub(mason, "install_packages")
 
             vim.lsp._enabled_configs = {
@@ -374,7 +395,7 @@ describe("ensure.plugin.lsp", function()
     describe("lsp.auto feature", function()
         it("does not run auto-detection when auto.enable is false", function()
             mason.is_enabled = true
-            plugin.auto = { enable = false, ignore = {}, multi = true }
+            plugin.auto.config = { enable = false, ignore = {}, multi = true }
             helpers.stub(mason, "install_packages")
             helpers.stub(mason, "find_lsps_for_filetype")
 
@@ -387,7 +408,7 @@ describe("ensure.plugin.lsp", function()
 
         it("does not run auto-detection when an LSP is already enabled for the filetype", function()
             mason.is_enabled = true
-            plugin.auto = { enable = true, ignore = {}, multi = true }
+            plugin.auto.config = { enable = true, ignore = {}, multi = true }
             helpers.stub(mason, "install_packages")
             helpers.stub(mason, "find_lsps_for_filetype")
             helpers.stub(plugin, "resolve_package", nil)
@@ -405,7 +426,7 @@ describe("ensure.plugin.lsp", function()
 
         it("runs auto-detection when auto.enable is true and no LSP is enabled", function()
             mason.is_enabled = true
-            plugin.auto = { enable = true, ignore = {}, multi = true }
+            plugin.auto.config = { enable = true, ignore = {}, multi = true }
             helpers.stub(mason, "install_packages")
             helpers.stub(mason, "find_lsps_for_filetype", {})
 
@@ -418,106 +439,106 @@ describe("ensure.plugin.lsp", function()
 
         it("auto-enables single LSP when only one is available", function()
             mason.is_enabled = true
-            plugin.auto = { enable = true, ignore = {}, multi = true }
+            plugin.auto.config = { enable = true, ignore = {}, multi = true }
             helpers.stub(mason, "install_packages")
             helpers.stub(mason, "find_lsps_for_filetype", {
-                { lsp = "lua_ls", package = "lua-language-server" },
+                { tool = "lua_ls", package = "lua-language-server" },
             })
-            helpers.stub(plugin, "auto_enable_lsp")
+            helpers.stub(plugin.auto, "enable")
 
             vim.lsp._enabled_configs = {}
 
             plugin:autoinstall("lua")
 
             assert
-                .stub(plugin.auto_enable_lsp)
-                .was_called_with(match.is_ref(plugin), { lsp = "lua_ls", package = "lua-language-server" }, "lua")
+                .stub(plugin.auto.enable)
+                .was_called_with(match.is_ref(plugin.auto), { tool = "lua_ls", package = "lua-language-server" }, "lua")
         end)
 
         it("prompts user selection when multiple LSPs are available and multi is true", function()
             mason.is_enabled = true
-            plugin.auto = { enable = true, ignore = {}, multi = true }
+            plugin.auto.config = { enable = true, ignore = {}, multi = true }
             helpers.stub(mason, "install_packages")
             helpers.stub(mason, "find_lsps_for_filetype", {
-                { lsp = "pyright", package = "pyright" },
-                { lsp = "pylsp", package = "python-lsp-server" },
+                { tool = "pyright", package = "pyright" },
+                { tool = "pylsp", package = "python-lsp-server" },
             })
-            helpers.stub(plugin, "prompt_lsp_selection")
+            helpers.stub(plugin.auto, "prompt_selection")
 
             vim.lsp._enabled_configs = {}
 
             plugin:autoinstall("python")
 
-            assert.stub(plugin.prompt_lsp_selection).was_called_with(match.is_ref(plugin), {
-                { lsp = "pyright", package = "pyright" },
-                { lsp = "pylsp", package = "python-lsp-server" },
+            assert.stub(plugin.auto.prompt_selection).was_called_with(match.is_ref(plugin.auto), {
+                { tool = "pyright", package = "pyright" },
+                { tool = "pylsp", package = "python-lsp-server" },
             }, "python")
         end)
 
         it("does nothing when multiple LSPs are available and multi is false", function()
             mason.is_enabled = true
-            plugin.auto = { enable = true, ignore = {}, multi = false }
+            plugin.auto.config = { enable = true, ignore = {}, multi = false }
             helpers.stub(mason, "install_packages")
             helpers.stub(mason, "find_lsps_for_filetype", {
-                { lsp = "pyright", package = "pyright" },
-                { lsp = "pylsp", package = "python-lsp-server" },
+                { tool = "pyright", package = "pyright" },
+                { tool = "pylsp", package = "python-lsp-server" },
             })
-            helpers.stub(plugin, "auto_enable_lsp")
-            helpers.stub(plugin, "prompt_lsp_selection")
+            helpers.stub(plugin.auto, "enable")
+            helpers.stub(plugin.auto, "prompt_selection")
 
             vim.lsp._enabled_configs = {}
 
             plugin:autoinstall("python")
 
-            assert.stub(plugin.auto_enable_lsp).was_not_called()
-            assert.stub(plugin.prompt_lsp_selection).was_not_called()
+            assert.stub(plugin.auto.enable).was_not_called()
+            assert.stub(plugin.auto.prompt_selection).was_not_called()
         end)
 
         it("still auto-enables single LSP when multi is false", function()
             mason.is_enabled = true
-            plugin.auto = { enable = true, ignore = {}, multi = false }
+            plugin.auto.config = { enable = true, ignore = {}, multi = false }
             helpers.stub(mason, "install_packages")
             helpers.stub(mason, "find_lsps_for_filetype", {
-                { lsp = "lua_ls", package = "lua-language-server" },
+                { tool = "lua_ls", package = "lua-language-server" },
             })
-            helpers.stub(plugin, "auto_enable_lsp")
+            helpers.stub(plugin.auto, "enable")
 
             vim.lsp._enabled_configs = {}
 
             plugin:autoinstall("lua")
 
             assert
-                .stub(plugin.auto_enable_lsp)
-                .was_called_with(match.is_ref(plugin), { lsp = "lua_ls", package = "lua-language-server" }, "lua")
+                .stub(plugin.auto.enable)
+                .was_called_with(match.is_ref(plugin.auto), { tool = "lua_ls", package = "lua-language-server" }, "lua")
         end)
 
         it("does nothing when no LSPs are available from Mason", function()
             mason.is_enabled = true
-            plugin.auto = { enable = true, ignore = {}, multi = true }
+            plugin.auto.config = { enable = true, ignore = {}, multi = true }
             helpers.stub(mason, "install_packages")
             helpers.stub(mason, "find_lsps_for_filetype", {})
-            helpers.stub(plugin, "auto_enable_lsp")
-            helpers.stub(plugin, "prompt_lsp_selection")
+            helpers.stub(plugin.auto, "enable")
+            helpers.stub(plugin.auto, "prompt_selection")
 
             vim.lsp._enabled_configs = {}
 
             plugin:autoinstall("unknown")
 
-            assert.stub(plugin.auto_enable_lsp).was_not_called()
-            assert.stub(plugin.prompt_lsp_selection).was_not_called()
+            assert.stub(plugin.auto.enable).was_not_called()
+            assert.stub(plugin.auto.prompt_selection).was_not_called()
         end)
     end)
 
     describe("lsp.auto.ignore feature", function()
         it("does not count ignored LSPs as enabled", function()
             mason.is_enabled = true
-            plugin.auto = { enable = true, ignore = { "copilot" }, multi = true }
+            plugin.auto.config = { enable = true, ignore = { "copilot" }, multi = true }
             helpers.stub(mason, "install_packages")
             helpers.stub(mason, "find_lsps_for_filetype", {
-                { lsp = "lua_ls", package = "lua-language-server" },
+                { tool = "lua_ls", package = "lua-language-server" },
             })
             helpers.stub(plugin, "resolve_package", nil)
-            helpers.stub(plugin, "auto_enable_lsp")
+            helpers.stub(plugin.auto, "enable")
 
             -- Only copilot is enabled for lua, but it's ignored
             vim.lsp._enabled_configs = {
@@ -530,12 +551,12 @@ describe("ensure.plugin.lsp", function()
 
             -- Should still run auto-detection since copilot is ignored
             assert.stub(mason.find_lsps_for_filetype).was_called_with(match.is_ref(mason), "lua")
-            assert.stub(plugin.auto_enable_lsp).was_called()
+            assert.stub(plugin.auto.enable).was_called()
         end)
 
         it("still installs packages for ignored LSPs", function()
             mason.is_enabled = true
-            plugin.auto = { enable = true, ignore = { "copilot" }, multi = true }
+            plugin.auto.config = { enable = true, ignore = { "copilot" }, multi = true }
             helpers.stub(mason, "install_packages")
             helpers.stub(mason, "find_lsps_for_filetype", {})
             helpers.stub(plugin, "resolve_package", function(_, lsp)
@@ -561,14 +582,14 @@ describe("ensure.plugin.lsp", function()
 
         it("filters ignored LSPs from auto-detection results", function()
             mason.is_enabled = true
-            plugin.auto = { enable = true, ignore = { "ltex", "ltex_plus" }, multi = true }
+            plugin.auto.config = { enable = true, ignore = { "ltex", "ltex_plus" }, multi = true }
             helpers.stub(mason, "install_packages")
             helpers.stub(mason, "find_lsps_for_filetype", {
-                { lsp = "lua_ls", package = "lua-language-server" },
-                { lsp = "ltex", package = "ltex-ls" },
-                { lsp = "ltex_plus", package = "ltex-ls-plus" },
+                { tool = "lua_ls", package = "lua-language-server" },
+                { tool = "ltex", package = "ltex-ls" },
+                { tool = "ltex_plus", package = "ltex-ls-plus" },
             })
-            helpers.stub(plugin, "auto_enable_lsp")
+            helpers.stub(plugin.auto, "enable")
 
             vim.lsp._enabled_configs = {}
 
@@ -576,55 +597,55 @@ describe("ensure.plugin.lsp", function()
 
             -- Should only auto-enable lua_ls, ignoring ltex and ltex_plus
             assert
-                .stub(plugin.auto_enable_lsp)
-                .was_called_with(match.is_ref(plugin), { lsp = "lua_ls", package = "lua-language-server" }, "lua")
+                .stub(plugin.auto.enable)
+                .was_called_with(match.is_ref(plugin.auto), { tool = "lua_ls", package = "lua-language-server" }, "lua")
         end)
 
         it("prompts selection only for non-ignored LSPs", function()
             mason.is_enabled = true
-            plugin.auto = { enable = true, ignore = { "ltex" }, multi = true }
+            plugin.auto.config = { enable = true, ignore = { "ltex" }, multi = true }
             helpers.stub(mason, "install_packages")
             helpers.stub(mason, "find_lsps_for_filetype", {
-                { lsp = "pyright", package = "pyright" },
-                { lsp = "pylsp", package = "python-lsp-server" },
-                { lsp = "ltex", package = "ltex-ls" },
+                { tool = "pyright", package = "pyright" },
+                { tool = "pylsp", package = "python-lsp-server" },
+                { tool = "ltex", package = "ltex-ls" },
             })
-            helpers.stub(plugin, "prompt_lsp_selection")
+            helpers.stub(plugin.auto, "prompt_selection")
 
             vim.lsp._enabled_configs = {}
 
             plugin:autoinstall("python")
 
             -- ltex should be filtered out from the selection
-            assert.stub(plugin.prompt_lsp_selection).was_called_with(match.is_ref(plugin), {
-                { lsp = "pyright", package = "pyright" },
-                { lsp = "pylsp", package = "python-lsp-server" },
+            assert.stub(plugin.auto.prompt_selection).was_called_with(match.is_ref(plugin.auto), {
+                { tool = "pyright", package = "pyright" },
+                { tool = "pylsp", package = "python-lsp-server" },
             }, "python")
         end)
 
         it("does nothing when all available LSPs are ignored", function()
             mason.is_enabled = true
-            plugin.auto = { enable = true, ignore = { "ltex", "ltex_plus" }, multi = true }
+            plugin.auto.config = { enable = true, ignore = { "ltex", "ltex_plus" }, multi = true }
             helpers.stub(mason, "install_packages")
             helpers.stub(mason, "find_lsps_for_filetype", {
-                { lsp = "ltex", package = "ltex-ls" },
-                { lsp = "ltex_plus", package = "ltex-ls-plus" },
+                { tool = "ltex", package = "ltex-ls" },
+                { tool = "ltex_plus", package = "ltex-ls-plus" },
             })
-            helpers.stub(plugin, "auto_enable_lsp")
-            helpers.stub(plugin, "prompt_lsp_selection")
+            helpers.stub(plugin.auto, "enable")
+            helpers.stub(plugin.auto, "prompt_selection")
 
             vim.lsp._enabled_configs = {}
 
             plugin:autoinstall("markdown")
 
             -- All available LSPs are ignored, so nothing should happen
-            assert.stub(plugin.auto_enable_lsp).was_not_called()
-            assert.stub(plugin.prompt_lsp_selection).was_not_called()
+            assert.stub(plugin.auto.enable).was_not_called()
+            assert.stub(plugin.auto.prompt_selection).was_not_called()
         end)
 
         it("counts non-ignored LSPs as enabled to prevent auto-detection", function()
             mason.is_enabled = true
-            plugin.auto = { enable = true, ignore = { "copilot" }, multi = true }
+            plugin.auto.config = { enable = true, ignore = { "copilot" }, multi = true }
             helpers.stub(mason, "install_packages")
             helpers.stub(mason, "find_lsps_for_filetype")
             helpers.stub(plugin, "resolve_package", nil)
@@ -646,120 +667,8 @@ describe("ensure.plugin.lsp", function()
         end)
     end)
 
-    describe("auto_enable_lsp", function()
-        it("installs package and enables LSP on success", function()
-            helpers.stub(mason, "try_install", function(_, _, callback)
-                callback()
-            end)
-            helpers.stub(vim.lsp, "enable")
-
-            plugin:auto_enable_lsp({ lsp = "lua_ls", package = "lua-language-server" }, "lua")
-
-            assert
-                .stub(mason.try_install)
-                .was_called_with(match.is_ref(mason), "lua-language-server", match.is_function())
-            assert.stub(vim.lsp.enable).was_called_with("lua_ls")
-        end)
-    end)
-
-    describe("prompt_lsp_selection", function()
-        -- Helper to call prompt_lsp_selection inside a coroutine (as the function requires)
-        local function call_in_coroutine(fn)
-            local coro = coroutine.create(fn)
-            coroutine.resume(coro)
-            return coro
-        end
-
-        it("calls vim.ui.select with LSP options and format_item", function()
-            -- Stub vim.schedule to execute immediately
-            helpers.stub(vim, "schedule", function(fn)
-                fn()
-            end)
-
-            local captured_items, captured_opts
-            helpers.stub(vim.ui, "select", function(items, opts, _)
-                captured_items = items
-                captured_opts = opts
-            end)
-
-            local available = {
-                { lsp = "pyright", package = "pyright" },
-                { lsp = "pylsp", package = "python-lsp-server" },
-            }
-
-            call_in_coroutine(function()
-                plugin:prompt_lsp_selection(available, "python")
-            end)
-
-            assert.stub(vim.ui.select).was_called()
-            assert.equals(2, #captured_items)
-            assert.equals("pyright", captured_items[1].lsp)
-            assert.equals("pylsp", captured_items[2].lsp)
-            assert.matches("python", captured_opts.prompt)
-            -- Test format_item returns LSP name
-            assert.equals("pyright", captured_opts.format_item(captured_items[1]))
-        end)
-
-        it("auto-enables selected LSP when user makes a choice", function()
-            -- Stub vim.schedule to execute immediately
-            helpers.stub(vim, "schedule", function(fn)
-                fn()
-            end)
-
-            local select_callback
-            helpers.stub(vim.ui, "select", function(_, _, callback)
-                select_callback = callback
-            end)
-            helpers.stub(plugin, "auto_enable_lsp")
-
-            local available = {
-                { lsp = "pyright", package = "pyright" },
-                { lsp = "pylsp", package = "python-lsp-server" },
-            }
-            local pylsp_entry = available[2]
-
-            local coro = call_in_coroutine(function()
-                plugin:prompt_lsp_selection(available, "python")
-            end)
-
-            -- Simulate user selecting pylsp entry
-            select_callback(pylsp_entry)
-
-            -- Wait for coroutine to complete
-            assert.equals("dead", coroutine.status(coro))
-
-            assert.stub(plugin.auto_enable_lsp).was_called_with(match.is_ref(plugin), pylsp_entry, "python")
-        end)
-
-        it("does nothing when user cancels selection", function()
-            -- Stub vim.schedule to execute immediately
-            helpers.stub(vim, "schedule", function(fn)
-                fn()
-            end)
-
-            local select_callback
-            helpers.stub(vim.ui, "select", function(_, _, callback)
-                select_callback = callback
-            end)
-            helpers.stub(plugin, "auto_enable_lsp")
-
-            local available = {
-                { lsp = "pyright", package = "pyright" },
-            }
-
-            local coro = call_in_coroutine(function()
-                plugin:prompt_lsp_selection(available, "python")
-            end)
-
-            -- Simulate user canceling (nil choice)
-            select_callback(nil)
-
-            -- Wait for coroutine to complete
-            assert.equals("dead", coroutine.status(coro))
-
-            assert.stub(plugin.auto_enable_lsp).was_not_called()
-        end)
-    end)
+    -- Note: auto_enable_lsp functionality moved to ensure.auto module
+    -- and tested via the auto.enable method
 
     describe("install", function()
         it("installs packages for enabled LSPs", function()
