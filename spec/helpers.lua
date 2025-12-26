@@ -80,6 +80,15 @@ function M.plugin(import, attrs)
     return plugin
 end
 
+---Flush pending vim.schedule callbacks by running the event loop briefly
+---@param timeout? number Timeout in ms (default 10)
+function M.flush_schedule(timeout)
+    -- vim.wait with a short timeout allows scheduled callbacks to execute
+    vim.wait(timeout or 10, function()
+        return false
+    end, 1)
+end
+
 ---Cleanup all stubs and mocks
 function M.teardown()
     for _, fn in ipairs(clean_functions) do

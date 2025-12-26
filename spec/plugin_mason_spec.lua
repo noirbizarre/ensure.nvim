@@ -4,9 +4,11 @@ local match = require("luassert.match")
 describe("ensure.plugin.mason #plugin #mason", function()
     before_each(function()
         helpers.mock(vim.health, true)
+        helpers.stub(vim, "notify")
     end)
 
     after_each(function()
+        helpers.flush_schedule()
         helpers.teardown()
     end)
 
@@ -35,6 +37,9 @@ describe("ensure.plugin.mason #plugin #mason", function()
         assert.is_true(plugin.is_installed)
         assert.is_true(plugin.is_enabled)
 
+        -- Wait for vim.schedule callbacks to execute
+        helpers.flush_schedule()
+
         assert.stub(plugin.install_packages).was_called_with(match.is_ref(plugin), { "pkg1" })
     end)
 
@@ -46,6 +51,9 @@ describe("ensure.plugin.mason #plugin #mason", function()
         helpers.stub(plugin, "install_packages")
 
         plugin:setup(opts)
+
+        -- Wait for vim.schedule callbacks to execute
+        helpers.flush_schedule()
 
         assert.stub(registry.on).was_called_with(match.is_ref(registry), "update:success", match.is_function())
     end)
@@ -305,7 +313,7 @@ describe("ensure.plugin.mason #plugin #mason", function()
     end)
 
     describe("tool mapping", function()
-        it("build_mappings returns cached mapping on subsequent calls", function()
+        it("build_mappings_sync returns cached mapping on subsequent calls", function()
             local registry = require("mason-registry")
             helpers.stub(registry, "get_all_package_specs", {
                 { name = "stylua", bin = { stylua = "cargo:stylua" } },
@@ -316,13 +324,13 @@ describe("ensure.plugin.mason #plugin #mason", function()
             plugin._lsp_to_mason = nil
             plugin._mason_to_lsp = nil
 
-            plugin:build_mappings()
-            plugin:build_mappings()
+            plugin:build_mappings_sync()
+            plugin:build_mappings_sync()
 
             assert.stub(registry.get_all_package_specs).was_called(1)
         end)
 
-        it("build_mappings extracts tools from package bin fields", function()
+        it("build_mappings_sync extracts tools from package bin fields", function()
             local registry = require("mason-registry")
             helpers.stub(registry, "get_all_package_specs", {
                 { name = "stylua", bin = { stylua = "cargo:stylua" } },
@@ -338,14 +346,14 @@ describe("ensure.plugin.mason #plugin #mason", function()
             plugin._lsp_to_mason = nil
             plugin._mason_to_lsp = nil
 
-            plugin:build_mappings()
+            plugin:build_mappings_sync()
 
             assert.same("stylua", plugin._tool_to_package["stylua"])
             assert.same("cmakelang", plugin._tool_to_package["cmake-format"])
             assert.same("cmakelang", plugin._tool_to_package["cmake-lint"])
         end)
 
-        it("build_mappings extracts LSP mappings from neovim.lspconfig fields", function()
+        it("build_mappings_sync extracts LSP mappings from neovim.lspconfig fields", function()
             local registry = require("mason-registry")
             helpers.stub(registry, "get_all_package_specs", {
                 { name = "lua-language-server", neovim = { lspconfig = "lua_ls" } },
@@ -359,7 +367,7 @@ describe("ensure.plugin.mason #plugin #mason", function()
             plugin._lsp_to_mason = nil
             plugin._mason_to_lsp = nil
 
-            plugin:build_mappings()
+            plugin:build_mappings_sync()
 
             assert.same("lua-language-server", plugin._lsp_to_mason["lua_ls"])
             assert.same("pyright", plugin._lsp_to_mason["pyright"])
@@ -572,7 +580,7 @@ describe("ensure.plugin.mason #plugin #mason", function()
             assert.same("lua_ls", results[1].tool)
         end)
 
-        it("build_mappings extracts tools_by_filetype from languages and categories", function()
+        it("build_mappings_sync extracts tools_by_filetype from languages and categories", function()
             local registry = require("mason-registry")
             helpers.stub(registry, "get_all_package_specs", {
                 {
@@ -609,7 +617,7 @@ describe("ensure.plugin.mason #plugin #mason", function()
             plugin._mason_to_lsp = nil
             plugin._tools_by_filetype = nil
 
-            plugin:build_mappings()
+            plugin:build_mappings_sync()
 
             -- Check tools_by_filetype mapping
             assert.is_not_nil(plugin._tools_by_filetype["lua"])

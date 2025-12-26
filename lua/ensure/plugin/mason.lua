@@ -22,6 +22,14 @@ M._mason_to_lsp = nil
 ---@type table<string, {tool: string, package: string, categories: string[]}[]>|nil
 M._tools_by_filetype = nil
 
+---Whether mappings are currently being built (for async build)
+---@type boolean
+M._building_mappings = false
+
+---Callbacks waiting for mappings to be built
+---@type function[]
+M._mapping_callbacks = {}
+
 function M:setup(opts)
     self.packages = opts.packages
     self.ignore = opts.ignore.packages
@@ -30,16 +38,19 @@ function M:setup(opts)
         and vim.list_contains(require("ensure.config").get_plugins(), "ensure.plugin.mason")
 
     if self.is_enabled then
-        local Registry = require("mason-registry")
-        local packages = vim.tbl_filter(function(p)
-            return type(p) == "string" and not (vim.list_contains(self.ignore, p) or Registry.is_installed(p))
-        end, self.packages)
+        -- Defer package checking and installation to avoid blocking startup
+        vim.schedule(function()
+            local Registry = require("mason-registry")
+            local packages = vim.tbl_filter(function(p)
+                return type(p) == "string" and not (vim.list_contains(self.ignore, p) or Registry.is_installed(p))
+            end, self.packages)
 
-        self:install_packages(packages)
+            self:install_packages(packages)
 
-        -- Clear cached mappings when registry is updated so they get rebuilt
-        Registry:on("update:success", function()
-            self:clear_mappings()
+            -- Clear cached mappings when registry is updated so they get rebuilt
+            Registry:on("update:success", function()
+                self:clear_mappings()
+            end)
         end)
     end
 end
@@ -198,11 +209,111 @@ function M:install()
     end
 end
 
----Build all mappings from Mason registry specs in a single pass
+---Build all mappings from Mason registry specs using coroutine for non-blocking
 ---Builds: tool_to_package, lsp_to_mason, mason_to_lsp, tools_by_filetype
-function M:build_mappings()
+---@param callback? function Optional callback when build is complete
+function M:build_mappings(callback)
+    -- Already built, call callback immediately
     if self._tool_to_package then
-        return -- Already built
+        if callback then
+            callback()
+        end
+        return
+    end
+
+    -- If currently building, queue the callback
+    if self._building_mappings then
+        if callback then
+            table.insert(self._mapping_callbacks, callback)
+        end
+        return
+    end
+
+    self._building_mappings = true
+    if callback then
+        table.insert(self._mapping_callbacks, callback)
+    end
+
+    -- Initialize empty tables
+    self._tool_to_package = {}
+    self._lsp_to_mason = {}
+    self._mason_to_lsp = {}
+    self._tools_by_filetype = {}
+
+    local Registry = require("mason-registry")
+    local specs = Registry.get_all_package_specs()
+    local chunk_size = 100
+    local index = 1
+
+    local function process_chunk()
+        local end_index = math.min(index + chunk_size - 1, #specs)
+
+        for i = index, end_index do
+            local spec = specs[i]
+
+            -- Build tool to package mapping from bin field
+            if spec.bin then
+                for tool_name, _ in pairs(spec.bin) do
+                    self._tool_to_package[tool_name] = spec.name
+                end
+            end
+
+            -- Build LSP mappings from neovim.lspconfig field
+            local lspconfig = vim.tbl_get(spec, "neovim", "lspconfig")
+            if lspconfig then
+                self._lsp_to_mason[lspconfig] = spec.name
+                self._mason_to_lsp[spec.name] = lspconfig
+            end
+
+            -- Build tools_by_filetype mapping from languages and categories fields
+            if spec.languages and spec.categories and spec.bin then
+                local dominated_categories = vim.iter(spec.categories):any(function(cat)
+                    return cat == "Formatter" or cat == "Linter" or cat == "LSP"
+                end)
+                if dominated_categories then
+                    local tool_name = next(spec.bin)
+                    if tool_name then
+                        for _, language in ipairs(spec.languages) do
+                            local ft = language:lower()
+                            if not self._tools_by_filetype[ft] then
+                                self._tools_by_filetype[ft] = {}
+                            end
+                            table.insert(self._tools_by_filetype[ft], {
+                                tool = tool_name,
+                                package = spec.name,
+                                categories = spec.categories,
+                            })
+                        end
+                    end
+                end
+            end
+        end
+
+        index = end_index + 1
+
+        if index <= #specs then
+            -- Yield to event loop, then continue
+            vim.schedule(process_chunk)
+        else
+            -- Done building, call all queued callbacks
+            self._building_mappings = false
+            local callbacks = self._mapping_callbacks
+            self._mapping_callbacks = {}
+            for _, cb in ipairs(callbacks) do
+                cb()
+            end
+        end
+    end
+
+    -- Start processing (use vim.schedule to not block current execution)
+    vim.schedule(process_chunk)
+end
+
+---Build mappings synchronously (for when immediate result is needed)
+---Prefer build_mappings() with callback when possible
+function M:build_mappings_sync()
+    if self._tool_to_package then
+        return
     end
 
     self._tool_to_package = {}
@@ -229,17 +340,14 @@ function M:build_mappings()
         end
 
         -- Build tools_by_filetype mapping from languages and categories fields
-        -- Include packages that have Formatter, Linter, or LSP category
         if spec.languages and spec.categories and spec.bin then
             local dominated_categories = vim.iter(spec.categories):any(function(cat)
                 return cat == "Formatter" or cat == "Linter" or cat == "LSP"
             end)
             if dominated_categories then
-                -- Get the first tool name from bin field
                 local tool_name = next(spec.bin)
                 if tool_name then
                     for _, language in ipairs(spec.languages) do
-                        -- Convert language name to filetype (simple lowercase)
                         local ft = language:lower()
                         if not self._tools_by_filetype[ft] then
                             self._tools_by_filetype[ft] = {}
@@ -262,6 +370,8 @@ function M:clear_mappings()
     self._lsp_to_mason = nil
     self._mason_to_lsp = nil
     self._tools_by_filetype = nil
+    self._building_mappings = false
+    self._mapping_callbacks = {}
 end
 
 ---Resolve a tool name to a Mason package name
@@ -269,7 +379,7 @@ end
 ---@param tool_name string The tool/executable name
 ---@return string|nil
 function M:resolve_tool(tool_name)
-    self:build_mappings()
+    self:build_mappings_sync()
     return self._tool_to_package[tool_name]
 end
 
@@ -278,7 +388,7 @@ end
 ---@param lsp_name string The LSP server name
 ---@return string|nil
 function M:resolve_lsp(lsp_name)
-    self:build_mappings()
+    self:build_mappings_sync()
     return self._lsp_to_mason[lsp_name]
 end
 
@@ -287,7 +397,7 @@ end
 ---@param package_name string The Mason package name
 ---@return string|nil
 function M:lsp_from_package(package_name)
-    self:build_mappings()
+    self:build_mappings_sync()
     return self._mason_to_lsp[package_name]
 end
 
@@ -297,7 +407,7 @@ end
 ---@param ft string The filetype to search for
 ---@return ensure.AutoEntry[] List of available LSP entries
 function M:find_lsps_for_filetype(ft)
-    self:build_mappings()
+    self:build_mappings_sync()
     local results = {}
 
     for lsp_name, package_name in pairs(self._lsp_to_mason or {}) do
@@ -322,7 +432,7 @@ end
 ---@param ft string The filetype to search for
 ---@return ensure.AutoEntry[] List of available formatter entries
 function M:find_formatters_for_filetype(ft)
-    self:build_mappings()
+    self:build_mappings_sync()
     local results = {}
 
     local tools = self._tools_by_filetype[ft] or {}
@@ -343,7 +453,7 @@ end
 ---@param ft string The filetype to search for
 ---@return ensure.AutoEntry[] List of available linter entries
 function M:find_linters_for_filetype(ft)
-    self:build_mappings()
+    self:build_mappings_sync()
     local results = {}
 
     local tools = self._tools_by_filetype[ft] or {}

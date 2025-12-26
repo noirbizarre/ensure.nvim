@@ -107,7 +107,7 @@ function M.should_ignore(ignore, tool, ft)
     end
 
     -- Check global ignore (list items / numeric keys)
-    for i, v in ipairs(ignore) do
+    for _, v in ipairs(ignore) do
         if v == tool then
             return true
         end

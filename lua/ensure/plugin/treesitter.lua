@@ -12,7 +12,10 @@ function M:setup(opts)
     self.parsers = opts.parsers
     self.ignore = opts.ignore.parsers
 
-    self:install()
+    -- Defer parser installation to avoid blocking startup
+    vim.schedule(function()
+        self:install()
+    end)
 end
 
 function M:health()

@@ -27,6 +27,9 @@ describe("ensure.plugin.treesitter", function()
         assert.same({ "lua", "rust" }, plugin.parsers)
         assert.same({ "rust" }, plugin.ignore)
 
+        -- Wait for vim.schedule callbacks to execute
+        helpers.flush_schedule()
+
         assert.stub(ts.install).was_called_with({ "lua" })
     end)
 

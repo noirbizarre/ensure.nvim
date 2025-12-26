@@ -3,20 +3,24 @@ local M = {}
 ---@param opts? ensure.SetupOpts
 function M.setup(opts)
     local config = require("ensure.config").setup(opts)
+
+    -- Setup all plugins - individual plugins defer their expensive operations
     for _, name in pairs(config.plugins) do
         local plugin = require(name) --[[@as ensure.Plugin]]
         plugin:setup(config)
     end
-    require("ensure.command")
 
     vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
-        group = vim.api.nvim_create_augroup("ensure", {}),
+        group = vim.api.nvim_create_augroup("ensure", { clear = true }),
         pattern = "*",
         callback = M.autoinstall,
         desc = "Ensure: Auto install missing packages for the current buffer",
     })
 
-    vim.api.nvim_create_user_command("Ensure", require("ensure.command"), {
+    -- Lazy-load command module only when the command is invoked
+    vim.api.nvim_create_user_command("Ensure", function(cmd_opts)
+        require("ensure.command")(cmd_opts)
+    end, {
         desc = "Ensure dependencies are installed",
         nargs = "?",
         bang = true,
