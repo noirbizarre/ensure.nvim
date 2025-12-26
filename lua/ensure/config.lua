@@ -5,10 +5,23 @@
 
 ---@alias LspAuto boolean|LspAutoConfig
 
+---@class ToolAutoConfig
+---@field enable boolean Enable auto-detection of tools (formatters/linters) for filetypes with no configured tool
+---@field ignore string[] Tools to ignore in auto-detection mode (filtered from suggestions)
+---@field multi boolean If true, prompt user to select when multiple tools match; if false, do nothing
+
+---@alias ToolAuto boolean|ToolAutoConfig
+
 ---@class LspConfig: {[string]: table|function}
 ---@field enable string[] List of LSP server names to ensure are installed via mason.nvim and enabled
 ---@field disable string[] List of LSP server names to ensure are not enabled (allow by-project disabling)
 ---@field auto LspAuto Auto-detection config: boolean or table with enable/ignore/multi fields
+
+---@class FormattersConfig: {[string]: string|string[]}
+---@field auto ToolAuto Auto-detection config: boolean or table with enable/ignore/multi fields
+
+---@class LintersConfig: {[string]: string|string[]}
+---@field auto ToolAuto Auto-detection config: boolean or table with enable/ignore/multi fields
 
 ---@class IgnoreConfig
 ---@field packages string[] List of package names to ignore when ensuring installation via mason.nvim
@@ -18,8 +31,8 @@
 ---@field install boolean Force installing everything on start
 ---@field packages table List of package names to ensure are installed via mason.nvim
 ---@field parsers string[] List of treesitter parsers to ensure are installed
----@field linters table<string, string|string[]> Linters by filetype
----@field formatters table<string, string|string[]> Formatters by filetype
+---@field linters LintersConfig Linters by filetype with optional auto config
+---@field formatters FormattersConfig Formatters by filetype with optional auto config
 ---@field lsp LspConfig Configuration for LSP servers
 ---@field ignore IgnoreConfig Configuration for ignoring certain packages or parsers
 ---@field plugins string[] List of plugin to load
@@ -31,8 +44,12 @@ local defaults = {
     install = false,
     packages = {},
     parsers = {},
-    formatters = {},
-    linters = {},
+    formatters = {
+        auto = false,
+    },
+    linters = {
+        auto = false,
+    },
     lsp = {
         enable = {},
         disable = {},

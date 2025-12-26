@@ -7,8 +7,8 @@ describe("ensure.config", function()
         assert.is_false(cfg.install)
         assert.same({}, cfg.packages)
         assert.same({}, cfg.parsers)
-        assert.same({}, cfg.formatters)
-        assert.same({}, cfg.linters)
+        assert.same({ auto = false }, cfg.formatters)
+        assert.same({ auto = false }, cfg.linters)
 
         local default_plugins = {
             "ensure.plugin.mason",
