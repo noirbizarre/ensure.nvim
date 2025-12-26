@@ -12,8 +12,10 @@ return {
     ---@type ensure.SetupOpts
     opts = {},
     opts_extend = {
+        "formatters.auto.ignore",
         "ignore.packages",
         "ignore.parsers",
+        "linters.auto.ignore",
         "lsp.auto.ignore",
         "lsp.disable",
         "lsp.enable",
