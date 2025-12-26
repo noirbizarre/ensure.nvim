@@ -17,6 +17,11 @@ M._lsp_to_mason = nil
 ---@type table<string, string>|nil
 M._mason_to_lsp = nil
 
+---Map of filetypes to available tools (formatters/linters) from Mason
+---Structure: { [filetype] = { { tool = "tool_name", package = "package_name", categories = {...} }, ... } }
+---@type table<string, {tool: string, package: string, categories: string[]}[]>|nil
+M._tools_by_filetype = nil
+
 function M:setup(opts)
     self.packages = opts.packages
     self.ignore = opts.ignore.packages
@@ -194,7 +199,7 @@ function M:install()
 end
 
 ---Build all mappings from Mason registry specs in a single pass
----Builds: tool_to_package, lsp_to_mason, mason_to_lsp
+---Builds: tool_to_package, lsp_to_mason, mason_to_lsp, tools_by_filetype
 function M:build_mappings()
     if self._tool_to_package then
         return -- Already built
@@ -203,6 +208,7 @@ function M:build_mappings()
     self._tool_to_package = {}
     self._lsp_to_mason = {}
     self._mason_to_lsp = {}
+    self._tools_by_filetype = {}
 
     local Registry = require("mason-registry")
     local specs = Registry.get_all_package_specs()
@@ -221,6 +227,32 @@ function M:build_mappings()
             self._lsp_to_mason[lspconfig] = spec.name
             self._mason_to_lsp[spec.name] = lspconfig
         end
+
+        -- Build tools_by_filetype mapping from languages and categories fields
+        -- Only include packages that have Formatter or Linter category
+        if spec.languages and spec.categories and spec.bin then
+            local dominated_categories = vim.iter(spec.categories):any(function(cat)
+                return cat == "Formatter" or cat == "Linter"
+            end)
+            if dominated_categories then
+                -- Get the first tool name from bin field
+                local tool_name = next(spec.bin)
+                if tool_name then
+                    for _, language in ipairs(spec.languages) do
+                        -- Convert language name to filetype (simple lowercase)
+                        local ft = language:lower()
+                        if not self._tools_by_filetype[ft] then
+                            self._tools_by_filetype[ft] = {}
+                        end
+                        table.insert(self._tools_by_filetype[ft], {
+                            tool = tool_name,
+                            package = spec.name,
+                            categories = spec.categories,
+                        })
+                    end
+                end
+            end
+        end
     end
 end
 
@@ -229,6 +261,7 @@ function M:clear_mappings()
     self._tool_to_package = nil
     self._lsp_to_mason = nil
     self._mason_to_lsp = nil
+    self._tools_by_filetype = nil
 end
 
 ---Resolve a tool name to a Mason package name
@@ -277,6 +310,48 @@ function M:find_lsps_for_filetype(ft)
             table.insert(results, {
                 lsp = lsp_name,
                 package = package_name,
+            })
+        end
+    end
+
+    return results
+end
+
+---Find available formatters for a filetype from Mason registry
+---Returns formatters that have the "Formatter" category and matching language
+---@param ft string The filetype to search for
+---@return {tool: string, package: string}[] List of available formatter entries
+function M:find_formatters_for_filetype(ft)
+    self:build_mappings()
+    local results = {}
+
+    local tools = self._tools_by_filetype[ft] or {}
+    for _, entry in ipairs(tools) do
+        if vim.list_contains(entry.categories, "Formatter") then
+            table.insert(results, {
+                tool = entry.tool,
+                package = entry.package,
+            })
+        end
+    end
+
+    return results
+end
+
+---Find available linters for a filetype from Mason registry
+---Returns linters that have the "Linter" category and matching language
+---@param ft string The filetype to search for
+---@return {tool: string, package: string}[] List of available linter entries
+function M:find_linters_for_filetype(ft)
+    self:build_mappings()
+    local results = {}
+
+    local tools = self._tools_by_filetype[ft] or {}
+    for _, entry in ipairs(tools) do
+        if vim.list_contains(entry.categories, "Linter") then
+            table.insert(results, {
+                tool = entry.tool,
+                package = entry.package,
             })
         end
     end

@@ -371,12 +371,14 @@ describe("ensure.plugin.mason #plugin #mason", function()
             plugin._tool_to_package = { stylua = "stylua" }
             plugin._lsp_to_mason = { lua_ls = "lua-language-server" }
             plugin._mason_to_lsp = { ["lua-language-server"] = "lua_ls" }
+            plugin._tools_by_filetype = { lua = {} }
 
             plugin:clear_mappings()
 
             assert.is_nil(plugin._tool_to_package)
             assert.is_nil(plugin._lsp_to_mason)
             assert.is_nil(plugin._mason_to_lsp)
+            assert.is_nil(plugin._tools_by_filetype)
         end)
 
         it("resolve_tool returns package name for known tool", function()
@@ -568,6 +570,162 @@ describe("ensure.plugin.mason #plugin #mason", function()
             -- Should still return lua_ls, gracefully skipping the broken one
             assert.same(1, #results)
             assert.same("lua_ls", results[1].lsp)
+        end)
+
+        it("build_mappings extracts tools_by_filetype from languages and categories", function()
+            local registry = require("mason-registry")
+            helpers.stub(registry, "get_all_package_specs", {
+                {
+                    name = "stylua",
+                    bin = { stylua = "cargo:stylua" },
+                    languages = { "Lua", "Luau" },
+                    categories = { "Formatter" },
+                },
+                {
+                    name = "ruff",
+                    bin = { ruff = "pypi:ruff" },
+                    languages = { "Python" },
+                    categories = { "Linter", "Formatter" },
+                },
+                {
+                    name = "eslint_d",
+                    bin = { eslint_d = "npm:eslint_d" },
+                    languages = { "JavaScript", "TypeScript" },
+                    categories = { "Linter" },
+                },
+                -- Package without Formatter/Linter category should be ignored
+                {
+                    name = "lua-language-server",
+                    bin = { ["lua-language-server"] = "cargo:lua-ls" },
+                    languages = { "Lua" },
+                    categories = { "LSP" },
+                    neovim = { lspconfig = "lua_ls" },
+                },
+            })
+
+            plugin.is_enabled = true
+            plugin._tool_to_package = nil
+            plugin._lsp_to_mason = nil
+            plugin._mason_to_lsp = nil
+            plugin._tools_by_filetype = nil
+
+            plugin:build_mappings()
+
+            -- Check tools_by_filetype mapping
+            assert.is_not_nil(plugin._tools_by_filetype["lua"])
+            assert.same(1, #plugin._tools_by_filetype["lua"])
+            assert.same("stylua", plugin._tools_by_filetype["lua"][1].tool)
+
+            assert.is_not_nil(plugin._tools_by_filetype["luau"])
+            assert.same(1, #plugin._tools_by_filetype["luau"])
+
+            assert.is_not_nil(plugin._tools_by_filetype["python"])
+            assert.same(1, #plugin._tools_by_filetype["python"])
+            assert.same("ruff", plugin._tools_by_filetype["python"][1].tool)
+            assert.same({ "Linter", "Formatter" }, plugin._tools_by_filetype["python"][1].categories)
+
+            assert.is_not_nil(plugin._tools_by_filetype["javascript"])
+            assert.same(1, #plugin._tools_by_filetype["javascript"])
+            assert.same("eslint_d", plugin._tools_by_filetype["javascript"][1].tool)
+
+            assert.is_not_nil(plugin._tools_by_filetype["typescript"])
+            assert.same(1, #plugin._tools_by_filetype["typescript"])
+        end)
+
+        it("find_formatters_for_filetype returns formatters with matching category", function()
+            plugin.is_enabled = true
+            plugin._tool_to_package = {}
+            plugin._lsp_to_mason = {}
+            plugin._mason_to_lsp = {}
+            plugin._tools_by_filetype = {
+                python = {
+                    { tool = "ruff", package = "ruff", categories = { "Linter", "Formatter" } },
+                    { tool = "pylint", package = "pylint", categories = { "Linter" } },
+                },
+            }
+
+            local results = plugin:find_formatters_for_filetype("python")
+
+            assert.same(1, #results)
+            assert.same("ruff", results[1].tool)
+            assert.same("ruff", results[1].package)
+        end)
+
+        it("find_formatters_for_filetype returns multiple formatters", function()
+            plugin.is_enabled = true
+            plugin._tool_to_package = {}
+            plugin._lsp_to_mason = {}
+            plugin._mason_to_lsp = {}
+            plugin._tools_by_filetype = {
+                lua = {
+                    { tool = "stylua", package = "stylua", categories = { "Formatter" } },
+                    { tool = "luaformatter", package = "luaformatter", categories = { "Formatter" } },
+                },
+            }
+
+            local results = plugin:find_formatters_for_filetype("lua")
+
+            assert.same(2, #results)
+        end)
+
+        it("find_formatters_for_filetype returns empty table for unknown filetype", function()
+            plugin.is_enabled = true
+            plugin._tool_to_package = {}
+            plugin._lsp_to_mason = {}
+            plugin._mason_to_lsp = {}
+            plugin._tools_by_filetype = {}
+
+            local results = plugin:find_formatters_for_filetype("unknown")
+
+            assert.same({}, results)
+        end)
+
+        it("find_linters_for_filetype returns linters with matching category", function()
+            plugin.is_enabled = true
+            plugin._tool_to_package = {}
+            plugin._lsp_to_mason = {}
+            plugin._mason_to_lsp = {}
+            plugin._tools_by_filetype = {
+                python = {
+                    { tool = "ruff", package = "ruff", categories = { "Linter", "Formatter" } },
+                    { tool = "black", package = "black", categories = { "Formatter" } },
+                },
+            }
+
+            local results = plugin:find_linters_for_filetype("python")
+
+            assert.same(1, #results)
+            assert.same("ruff", results[1].tool)
+            assert.same("ruff", results[1].package)
+        end)
+
+        it("find_linters_for_filetype returns multiple linters", function()
+            plugin.is_enabled = true
+            plugin._tool_to_package = {}
+            plugin._lsp_to_mason = {}
+            plugin._mason_to_lsp = {}
+            plugin._tools_by_filetype = {
+                javascript = {
+                    { tool = "eslint_d", package = "eslint_d", categories = { "Linter" } },
+                    { tool = "biome", package = "biome", categories = { "Linter", "Formatter" } },
+                },
+            }
+
+            local results = plugin:find_linters_for_filetype("javascript")
+
+            assert.same(2, #results)
+        end)
+
+        it("find_linters_for_filetype returns empty table for unknown filetype", function()
+            plugin.is_enabled = true
+            plugin._tool_to_package = {}
+            plugin._lsp_to_mason = {}
+            plugin._mason_to_lsp = {}
+            plugin._tools_by_filetype = {}
+
+            local results = plugin:find_linters_for_filetype("unknown")
+
+            assert.same({}, results)
         end)
     end)
 end)

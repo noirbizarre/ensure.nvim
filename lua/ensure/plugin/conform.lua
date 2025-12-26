@@ -1,9 +1,25 @@
 local Plugin = require("ensure.plugin")
 local mason = require("ensure.plugin.mason")
+local notify = require("ensure.notify")
 local util = require("ensure.util")
 
 ---@class ensure.ConformPlugin : ensure.Plugin
+---@field auto ToolAutoConfig Normalized auto-detection configuration
 local M = Plugin:new()
+
+---Default values for auto-detection config
+---@type ToolAutoConfig
+local AUTO_DEFAULTS = {
+    enable = false,
+    ignore = {},
+    multi = true,
+}
+
+local CONFIG_KEYS = { "auto" }
+
+-- Prompt queue state (module-level)
+local prompts = util.Queue:new()
+local prompt_active = false
 
 ---Resolve a formatter name to a Mason package name
 ---Uses the formatter's command to find the corresponding Mason package
@@ -34,15 +50,32 @@ function M:resolve_package(formatter_name, bufnr)
     return mason:resolve_tool(exe_name)
 end
 
+---Normalize formatters.auto config to a table
+---@param auto boolean|ToolAutoConfig|nil
+---@return ToolAutoConfig
+local function normalize_auto(auto)
+    if type(auto) == "boolean" then
+        return vim.tbl_extend("force", AUTO_DEFAULTS, { enable = auto })
+    elseif type(auto) == "table" then
+        return vim.tbl_extend("force", AUTO_DEFAULTS, auto)
+    else
+        return vim.deepcopy(AUTO_DEFAULTS)
+    end
+end
+
 function M:setup(opts)
     self.is_installed, _ = pcall(require, "conform")
     if not self.is_installed then
         return
     end
 
+    self.auto = normalize_auto(opts.formatters.auto)
+
     local conform = require("conform")
     for ft, formatters in pairs(opts.formatters) do
-        conform.formatters_by_ft[ft] = util.string_list(formatters)
+        if not vim.list_contains(CONFIG_KEYS, ft) then
+            conform.formatters_by_ft[ft] = util.string_list(formatters)
+        end
     end
 end
 
@@ -59,7 +92,7 @@ function M:health()
     end
 end
 
-function M:autoinstall(_)
+function M:autoinstall(ft)
     if not self.is_installed or not mason.is_enabled then
         return
     end
@@ -67,6 +100,7 @@ function M:autoinstall(_)
     local conform = require("conform")
     local bufnr = vim.api.nvim_get_current_buf()
     local formatters = conform.list_formatters_for_buffer(bufnr)
+    local has_configured_formatter = formatters and #formatters > 0
 
     if formatters then
         local packages = {}
@@ -78,6 +112,102 @@ function M:autoinstall(_)
         end
         mason:install_packages(packages)
     end
+
+    -- Auto-detection: defer to allow formatters to resolve
+    if not has_configured_formatter and self.auto.enable and not prompts:seen(ft) then
+        prompts:enqueue(ft)
+        vim.defer_fn(function()
+            self:guess_autoinstalls()
+        end, 500)
+    end
+end
+
+function M:guess_autoinstalls()
+    if prompt_active then
+        return
+    end
+
+    prompt_active = true
+
+    coroutine.resume(coroutine.create(function()
+        while not prompts:is_empty() do
+            local ft = prompts:dequeue()
+            self:guess_autoinstall_for_filetype(ft)
+        end
+
+        prompt_active = false
+    end))
+end
+
+function M:guess_autoinstall_for_filetype(ft)
+    local conform = require("conform")
+
+    -- Re-check if any formatter is now configured for this filetype
+    local configured = conform.formatters_by_ft[ft]
+    if configured and #configured > 0 then
+        return -- Formatter is configured, don't auto-detect
+    end
+
+    -- Find available formatters for this filetype from Mason
+    local available = mason:find_formatters_for_filetype(ft)
+
+    -- Filter out ignored formatters from available options
+    available = vim.tbl_filter(function(entry)
+        return not vim.list_contains(self.auto.ignore, entry.tool)
+    end, available)
+
+    if #available == 0 then
+        return
+    end
+
+    if #available == 1 then
+        -- Single match: auto-install and enable
+        self:auto_enable_formatter(available[1], ft)
+    elseif self.auto.multi then
+        -- Multiple matches and multi is enabled: prompt user to select
+        self:prompt_formatter_selection(available, ft)
+    end
+end
+
+---Auto-enable a single formatter for a filetype
+---@param entry {tool: string, package: string}
+---@param ft string
+function M:auto_enable_formatter(entry, ft)
+    notify(("Auto-enabling `%s` for filetype `%s`"):format(entry.tool, ft))
+    mason:try_install(entry.package, function()
+        local conform = require("conform")
+        conform.formatters_by_ft[ft] = { entry.tool }
+        notify(("Formatter `%s` enabled. Add it to your config for persistence."):format(entry.tool))
+    end)
+end
+
+---@async
+---Prompt user to select a formatter from multiple options (queued)
+---@param available {tool: string, package: string}[]
+---@param ft string
+function M:prompt_formatter_selection(available, ft)
+    local coro = assert(coroutine.running())
+
+    vim.schedule(function()
+        vim.ui.select(available, {
+            prompt = ("Select formatter for %s:"):format(ft),
+            format_item = function(item)
+                return item.tool
+            end,
+        }, function(choice)
+            coroutine.resume(coro, choice)
+        end)
+    end)
+    local choice = coroutine.yield()
+    if choice then
+        self:auto_enable_formatter(choice, ft)
+    end
+end
+
+---Only for testing: clear prompt queue and reset active state
+function M:clear_prompt_queue()
+    prompts:clear()
+    prompt_active = false
 end
 
 M.command = "formatters"
