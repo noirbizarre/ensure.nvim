@@ -3,6 +3,65 @@ local util = require("ensure.util")
 
 local M = {}
 
+-- Session persistence storage key
+-- Must start with uppercase and contain lowercase for Neovim session persistence
+-- Value is stored as JSON string since only String/Number types are persisted
+local SESSION_KEY = "EnsureAutoChoices"
+
+---@class ensure.AutoChoices
+---@field [string] table<string, ensure.AutoEntry> Map of kind -> filetype -> chosen entry
+
+---Get stored choices from session storage
+---Decodes from JSON string for session persistence compatibility
+---@return ensure.AutoChoices
+local function get_session_choices()
+    local stored = vim.g[SESSION_KEY]
+    if not stored or stored == "" then
+        return {}
+    end
+    local ok, choices = pcall(vim.json.decode, stored)
+    if ok and type(choices) == "table" then
+        return choices
+    end
+    return {}
+end
+
+---Save choices to session storage
+---Encodes as JSON string for session persistence compatibility
+---@param choices ensure.AutoChoices
+local function set_session_choices(choices)
+    if vim.tbl_isempty(choices) then
+        vim.g[SESSION_KEY] = nil
+    else
+        vim.g[SESSION_KEY] = vim.json.encode(choices)
+    end
+end
+
+---Store a user's choice for a filetype and kind
+---@param kind string The tool kind (e.g., "Formatter", "Linter", "LSP server")
+---@param ft string The filetype
+---@param entry ensure.AutoEntry The chosen entry
+local function store_choice(kind, ft, entry)
+    local choices = get_session_choices()
+    if not choices[kind] then
+        choices[kind] = {}
+    end
+    choices[kind][ft] = entry
+    set_session_choices(choices)
+end
+
+---Get a stored choice for a filetype and kind
+---@param kind string The tool kind
+---@param ft string The filetype
+---@return ensure.AutoEntry|nil The stored entry, or nil if none
+local function get_stored_choice(kind, ft)
+    local choices = get_session_choices()
+    if choices[kind] then
+        return choices[kind][ft]
+    end
+    return nil
+end
+
 ---@alias ensure.AutoIgnore string[]|table<string, string[]|"*">
 
 ---@class ensure.AutoConfig
@@ -226,6 +285,14 @@ function AutoManager:guess_for_filetype(ft)
         return
     end
 
+    -- Check for a stored session choice first
+    local stored = get_stored_choice(self.opts.kind, ft)
+    if stored then
+        -- Restore the previous session choice without prompting
+        self:enable(stored, ft, true)
+        return
+    end
+
     -- Find available tools for this filetype
     local available = self.opts.find_available(ft)
 
@@ -251,8 +318,13 @@ end
 ---Notifies the user, installs via mason, then calls the configure callback
 ---@param entry ensure.AutoEntry The tool entry to enable
 ---@param ft string The filetype
-function AutoManager:enable(entry, ft)
+---@param from_session? boolean Whether this is a restore from session (skip storage)
+function AutoManager:enable(entry, ft, from_session)
     notify(("Auto-enabling `%s` for filetype `%s`"):format(entry.tool, ft))
+    -- Store the choice for session persistence (unless restoring from session)
+    if not from_session then
+        store_choice(self.opts.kind, ft, entry)
+    end
     self.opts.mason:try_install(entry.package, function()
         self.opts.configure(entry, ft)
         notify(("%s `%s` enabled. Add it to your config for persistence."):format(self.opts.kind, entry.tool))
@@ -290,13 +362,26 @@ end
 
 M.AutoManager = AutoManager
 
+---Clear all stored session choices
+---@return nil
+function M.clear_session_choices()
+    vim.g[SESSION_KEY] = nil
+end
+
+---Get all stored session choices (for debugging/testing)
+---@return ensure.AutoChoices
+function M.get_session_choices()
+    return get_session_choices()
+end
+
 ---Reset all global state (for testing)
----Clears all managers' queues and resets the prompt_active flag
+---Clears all managers' queues, resets the prompt_active flag, and clears session choices
 function M.reset()
     for _, manager in ipairs(managers) do
         manager.prompts:clear()
     end
     prompt_active = false
+    M.clear_session_choices()
 end
 
 return M

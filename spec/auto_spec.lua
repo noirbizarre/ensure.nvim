@@ -712,5 +712,271 @@ describe("ensure.auto", function()
             assert.is_true(manager1.prompts:is_empty())
             assert.is_true(manager2.prompts:is_empty())
         end)
+
+        it("clears session choices", function()
+            -- Simulate a stored session choice (JSON encoded for session persistence)
+            vim.g.EnsureAutoChoices = vim.json.encode({
+                Formatter = { lua = { tool = "stylua", package = "stylua" } },
+            })
+
+            auto.reset()
+
+            assert.same({}, auto.get_session_choices())
+        end)
+    end)
+
+    describe("session persistence", function()
+        local manager
+        local configure_stub
+        local mason_mock
+
+        before_each(function()
+            configure_stub = function() end
+            mason_mock = {
+                try_install = function(_, _, callback)
+                    callback()
+                end,
+            }
+
+            manager = auto.AutoManager:new({
+                config = true,
+                mason = mason_mock,
+                kind = "Formatter",
+                find_available = function()
+                    return {
+                        { tool = "stylua", package = "stylua" },
+                        { tool = "luaformatter", package = "luaformatter" },
+                    }
+                end,
+                is_configured = function()
+                    return false
+                end,
+                configure = function(entry, ft)
+                    configure_stub(entry, ft)
+                end,
+            })
+        end)
+
+        describe("get_session_choices", function()
+            it("returns empty table when no choices stored", function()
+                vim.g.EnsureAutoChoices = nil
+                assert.same({}, auto.get_session_choices())
+            end)
+
+            it("returns stored choices", function()
+                local choices = {
+                    Formatter = { lua = { tool = "stylua", package = "stylua" } },
+                }
+                vim.g.EnsureAutoChoices = vim.json.encode(choices)
+                assert.same(choices, auto.get_session_choices())
+            end)
+        end)
+
+        describe("clear_session_choices", function()
+            it("clears all stored choices", function()
+                vim.g.EnsureAutoChoices = vim.json.encode({
+                    Formatter = { lua = { tool = "stylua", package = "stylua" } },
+                })
+
+                auto.clear_session_choices()
+
+                assert.is_nil(vim.g.EnsureAutoChoices)
+            end)
+        end)
+
+        describe("storing choices", function()
+            it("stores choice when auto-enabling single tool", function()
+                manager = auto.AutoManager:new({
+                    config = true,
+                    mason = mason_mock,
+                    kind = "Formatter",
+                    find_available = function()
+                        return { { tool = "stylua", package = "stylua" } }
+                    end,
+                    is_configured = function()
+                        return false
+                    end,
+                    configure = function() end,
+                })
+
+                manager:trigger("lua")
+
+                local choices = auto.get_session_choices()
+                assert.is_not_nil(choices.Formatter)
+                assert.same({ tool = "stylua", package = "stylua" }, choices.Formatter.lua)
+            end)
+
+            it("stores choice when user selects from multiple options", function()
+                helpers.stub(vim, "schedule", function(fn)
+                    fn()
+                end)
+
+                local select_callback
+                helpers.stub(vim.ui, "select", function(_, _, callback)
+                    select_callback = callback
+                end)
+
+                local available = {
+                    { tool = "black", package = "black" },
+                    { tool = "ruff", package = "ruff" },
+                }
+
+                local coro = coroutine.create(function()
+                    manager:prompt_selection(available, "python")
+                end)
+                coroutine.resume(coro)
+
+                -- Simulate user selecting ruff
+                select_callback(available[2])
+
+                local choices = auto.get_session_choices()
+                assert.is_not_nil(choices.Formatter)
+                assert.same({ tool = "ruff", package = "ruff" }, choices.Formatter.python)
+            end)
+
+            it("stores choices per kind (Formatter, Linter, LSP)", function()
+                local lsp_manager = auto.AutoManager:new({
+                    config = true,
+                    mason = mason_mock,
+                    kind = "LSP server",
+                    find_available = function()
+                        return { { tool = "lua_ls", package = "lua-language-server" } }
+                    end,
+                    is_configured = function()
+                        return false
+                    end,
+                    configure = function() end,
+                })
+
+                manager = auto.AutoManager:new({
+                    config = true,
+                    mason = mason_mock,
+                    kind = "Formatter",
+                    find_available = function()
+                        return { { tool = "stylua", package = "stylua" } }
+                    end,
+                    is_configured = function()
+                        return false
+                    end,
+                    configure = function() end,
+                })
+
+                lsp_manager:trigger("lua")
+                manager:trigger("lua")
+
+                local choices = auto.get_session_choices()
+                assert.same({ tool = "lua_ls", package = "lua-language-server" }, choices["LSP server"].lua)
+                assert.same({ tool = "stylua", package = "stylua" }, choices.Formatter.lua)
+            end)
+        end)
+
+        describe("restoring choices", function()
+            it("uses stored choice instead of prompting", function()
+                vim.g.EnsureAutoChoices = vim.json.encode({
+                    Formatter = { lua = { tool = "stylua", package = "stylua" } },
+                })
+
+                local configured_entry
+                configure_stub = function(entry)
+                    configured_entry = entry
+                end
+
+                -- This manager has multiple tools, but stored choice should be used
+                manager = auto.AutoManager:new({
+                    config = true,
+                    mason = mason_mock,
+                    kind = "Formatter",
+                    find_available = function()
+                        return {
+                            { tool = "stylua", package = "stylua" },
+                            { tool = "luaformatter", package = "luaformatter" },
+                        }
+                    end,
+                    is_configured = function()
+                        return false
+                    end,
+                    configure = function(entry, ft)
+                        configure_stub(entry, ft)
+                    end,
+                })
+
+                local ui_select_called = false
+                helpers.stub(vim.ui, "select", function()
+                    ui_select_called = true
+                end)
+
+                manager:trigger("lua")
+
+                -- Should use stored choice, not prompt
+                assert.is_false(ui_select_called)
+                assert.same({ tool = "stylua", package = "stylua" }, configured_entry)
+            end)
+
+            it("does not overwrite stored choice when restoring", function()
+                vim.g.EnsureAutoChoices = vim.json.encode({
+                    Formatter = { lua = { tool = "stylua", package = "stylua" } },
+                })
+
+                manager = auto.AutoManager:new({
+                    config = true,
+                    mason = mason_mock,
+                    kind = "Formatter",
+                    find_available = function()
+                        return { { tool = "stylua", package = "stylua" } }
+                    end,
+                    is_configured = function()
+                        return false
+                    end,
+                    configure = function() end,
+                })
+
+                -- Trigger restore
+                manager:trigger("lua")
+
+                -- Choice should still be stored (not duplicated or modified)
+                local choices = auto.get_session_choices()
+                assert.same({ tool = "stylua", package = "stylua" }, choices.Formatter.lua)
+            end)
+
+            it("prompts for filetypes not in stored choices", function()
+                vim.g.EnsureAutoChoices = vim.json.encode({
+                    Formatter = { lua = { tool = "stylua", package = "stylua" } },
+                })
+
+                helpers.stub(vim, "schedule", function(fn)
+                    fn()
+                end)
+
+                local select_called = false
+                helpers.stub(vim.ui, "select", function()
+                    select_called = true
+                end)
+
+                -- This manager has multiple tools for python (not stored)
+                manager = auto.AutoManager:new({
+                    config = true,
+                    mason = mason_mock,
+                    kind = "Formatter",
+                    find_available = function()
+                        return {
+                            { tool = "black", package = "black" },
+                            { tool = "ruff", package = "ruff" },
+                        }
+                    end,
+                    is_configured = function()
+                        return false
+                    end,
+                    configure = function() end,
+                })
+
+                local coro = coroutine.create(function()
+                    manager:guess_for_filetype("python")
+                end)
+                coroutine.resume(coro)
+
+                -- Should prompt for python since it's not in stored choices
+                assert.is_true(select_called)
+            end)
+        end)
     end)
 end)
