@@ -22,7 +22,7 @@ function M.setup(opts)
         require("ensure.command")(cmd_opts)
     end, {
         desc = "Ensure dependencies are installed",
-        nargs = "?",
+        nargs = "*",
         bang = true,
     })
 

@@ -38,7 +38,7 @@ describe("ensure.init", function()
             .was_called_with({ "BufNewFile", "BufRead" }, match.table_with({ pattern = "*", callback = ensure.autoinstall }))
         assert
             .stub(vim.api.nvim_create_user_command)
-            .was_called_with("Ensure", match.is_function(), match.table_with({ nargs = "?", bang = true }))
+            .was_called_with("Ensure", match.is_function(), match.table_with({ nargs = "*", bang = true }))
     end)
 
     it("calls install when opts.install is true", function()

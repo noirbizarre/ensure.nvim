@@ -168,6 +168,8 @@ These are automatically merged. The following lists support `lazy.nvim` merging 
 | `Ensure lsps` | Install LSP servers only |
 | `Ensure formatters` | Install formatters only |
 | `Ensure linters` | Install linters only |
+| `Ensure session clear` | Clear all auto-detection session choices |
+| `Ensure session dump` | Output configuration to persist session choices |
 
 > [!TIP]
 > Set `install = true` in options to run installation on startup.
