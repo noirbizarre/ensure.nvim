@@ -316,19 +316,20 @@ function AutoManager:guess_for_filetype(ft)
 end
 
 ---Enable a tool for a filetype
----Notifies the user, installs via mason, then calls the configure callback
+---Installs via mason, calls the configure callback, then notifies the user
 ---@param entry ensure.AutoEntry The tool entry to enable
 ---@param ft string The filetype
 ---@param from_session? boolean Whether this is a restore from session (skip storage)
 function AutoManager:enable(entry, ft, from_session)
-    notify(("Auto-enabling `%s` for filetype `%s`"):format(entry.tool, ft))
     -- Store the choice for session persistence (unless restoring from session)
     if not from_session then
         store_choice(self.opts.kind, ft, entry)
     end
     self.opts.mason:try_install(entry.package, function()
         self.opts.configure(entry, ft)
-        notify(("%s `%s` enabled. Add it to your config for persistence."):format(self.opts.kind, entry.tool))
+        notify(
+            ("%s `%s` enabled for `%s`. Add it to your config for persistence."):format(self.opts.kind, entry.tool, ft)
+        )
     end)
 end
 
