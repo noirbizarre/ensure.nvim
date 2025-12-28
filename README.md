@@ -82,6 +82,13 @@ When you open a file without a configured tool:
 - **Single match**: Automatically installed and enabled
 - **Multiple matches**: Prompts you to choose
 
+> [!TIP]
+> Auto-detection choices are persisted across sessions. If you use a session manager, ensure `globals` is included in your `sessionoptions`:
+>
+> ```lua
+> vim.opt.sessionoptions:append("globals")
+> ```
+
 ### Fine-Grained Auto-Detection
 
 ```lua

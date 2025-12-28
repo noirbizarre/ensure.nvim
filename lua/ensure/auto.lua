@@ -6,6 +6,7 @@ local M = {}
 -- Session persistence storage key
 -- Must start with uppercase and contain lowercase for Neovim session persistence
 -- Value is stored as JSON string since only String/Number types are persisted
+-- Note: Requires "globals" in vim.opt.sessionoptions for session managers to persist this
 local SESSION_KEY = "EnsureAutoChoices"
 
 ---@class ensure.AutoChoices
