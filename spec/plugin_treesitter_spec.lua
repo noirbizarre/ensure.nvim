@@ -26,11 +26,70 @@ describe("ensure.plugin.treesitter", function()
         assert.is_true(plugin.is_installed)
         assert.same({ "lua", "rust" }, plugin.parsers)
         assert.same({ "rust" }, plugin.ignore)
+        assert.is_true(plugin.auto)
 
         -- Wait for vim.schedule callbacks to execute
         helpers.flush_schedule()
 
         assert.stub(ts.install).was_called_with({ "lua" })
+    end)
+
+    it("setup with parsers.auto = true triggers install", function()
+        helpers.stub(ts, "install")
+
+        ---@diagnostic disable-next-line: missing-fields
+        plugin:setup({
+            parsers = { auto = true },
+            ---@diagnostic disable-next-line: missing-fields
+            ignore = { parsers = {} },
+        })
+
+        assert.is_true(plugin.is_installed)
+        assert.is_true(plugin.auto)
+
+        -- Wait for vim.schedule callbacks to execute
+        helpers.flush_schedule()
+
+        assert.stub(ts.install).was_called()
+    end)
+
+    it("setup with parsers.auto = false does not trigger install", function()
+        helpers.stub(ts, "install")
+
+        ---@diagnostic disable-next-line: missing-fields
+        plugin:setup({
+            parsers = { auto = false },
+            ---@diagnostic disable-next-line: missing-fields
+            ignore = { parsers = {} },
+        })
+
+        assert.is_true(plugin.is_installed)
+        assert.is_false(plugin.auto)
+
+        -- Wait for vim.schedule callbacks to execute
+        helpers.flush_schedule()
+
+        assert.stub(ts.install).was_not_called()
+    end)
+
+    it("setup with mixed parsers list and auto = false stores parsers but does not trigger install", function()
+        helpers.stub(ts, "install")
+
+        ---@diagnostic disable-next-line: missing-fields
+        plugin:setup({
+            parsers = { "lua", "python", auto = false },
+            ---@diagnostic disable-next-line: missing-fields
+            ignore = { parsers = {} },
+        })
+
+        assert.is_true(plugin.is_installed)
+        assert.same({ "lua", "python" }, plugin.parsers)
+        assert.is_false(plugin.auto)
+
+        -- Wait for vim.schedule callbacks to execute
+        helpers.flush_schedule()
+
+        assert.stub(ts.install).was_not_called()
     end)
 
     it("health reports missing nvim-treesitter", function()

@@ -9,13 +9,23 @@ function M:setup(opts)
         return
     end
 
-    self.parsers = opts.parsers
+    local parsers = opts.parsers or {}
+    -- Extract parser list (array part) and auto setting
+    -- Supports: { "lua", "python" }, { auto = false }, or { "lua", "python", auto = false }
+    self.parsers = vim.iter(ipairs(parsers))
+        :map(function(_, v)
+            return v
+        end)
+        :totable()
+    self.auto = parsers.auto ~= false -- Default to true
     self.ignore = opts.ignore.parsers
 
     -- Defer parser installation to avoid blocking startup
-    vim.schedule(function()
-        self:install()
-    end)
+    if self.auto then
+        vim.schedule(function()
+            self:install()
+        end)
+    end
 end
 
 function M:health()

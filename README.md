@@ -55,7 +55,7 @@ Declarative tool management for Neovim. Automatically install and configure LSP 
             python = "ruff",
             javascript = "eslint",
         },
-        -- Tree-sitter parsers
+        -- Tree-sitter parsers (array format for specific parsers)
         parsers = { "lua", "python", "javascript", "typescript" },
         -- Additional Mason packages
         packages = { "codespell" },
@@ -88,6 +88,19 @@ When you open a file without a configured tool:
 > ```lua
 > vim.opt.sessionoptions:append("globals")
 > ```
+
+### Disabling Parser Auto-Installation
+
+By default, tree-sitter parsers are automatically installed on startup. To disable this while still declaring which parsers you want:
+
+```lua
+{
+    "noirbizarre/ensure.nvim",
+    opts = {
+        parsers = { "lua", "python", auto = false },
+    },
+}
+```
 
 ### Fine-Grained Auto-Detection
 
@@ -271,7 +284,8 @@ Run `:checkhealth ensure` to verify your setup.
         },
 
         -- Tree-sitter parsers
-        parsers = { "lua", "python" },
+        -- Can include auto = false to disable auto-installation on startup
+        parsers = { "lua", "python", auto = true },
 
         -- LSP servers
         lsp = {

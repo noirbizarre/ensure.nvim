@@ -20,10 +20,13 @@
 ---@field packages string[] List of package names to ignore when ensuring installation via mason.nvim
 ---@field parsers string[] List of treesitter parsers to ignore when ensuring installation
 
+---@class ParsersConfig
+---@field auto boolean Whether to auto-install parsers on startup (default: true)
+
 ---@class ensure.Config
 ---@field install boolean Force installing everything on start
 ---@field packages table List of package names to ensure are installed via mason.nvim
----@field parsers string[] List of treesitter parsers to ensure are installed
+---@field parsers ParsersConfig|string[] Treesitter parsers config or list of parsers to ensure are installed
 ---@field linters LintersConfig Linters by filetype with optional auto config
 ---@field formatters FormattersConfig Formatters by filetype with optional auto config
 ---@field lsp LspConfig Configuration for LSP servers
@@ -36,7 +39,9 @@
 local defaults = {
     install = false,
     packages = {},
-    parsers = {},
+    parsers = {
+        auto = true,
+    },
     formatters = {
         auto = false,
     },

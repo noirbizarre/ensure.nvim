@@ -6,7 +6,7 @@ describe("ensure.config", function()
 
         assert.is_false(cfg.install)
         assert.same({}, cfg.packages)
-        assert.same({}, cfg.parsers)
+        assert.same({ auto = true }, cfg.parsers)
         assert.same({ auto = false }, cfg.formatters)
         assert.same({ auto = false }, cfg.linters)
 
