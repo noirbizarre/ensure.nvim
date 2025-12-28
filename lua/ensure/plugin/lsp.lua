@@ -198,4 +198,22 @@ function M:install(opts)
     end
 end
 
+function M:dump_session(choices, lines)
+    if not choices["LSP server"] then
+        return
+    end
+
+    local servers = {}
+    for _, entry in pairs(choices["LSP server"]) do
+        table.insert(servers, entry.tool)
+    end
+
+    if #servers > 0 then
+        table.sort(servers)
+        table.insert(lines, "lsp = {")
+        table.insert(lines, ('    enable = { "%s" },'):format(table.concat(servers, '", "')))
+        table.insert(lines, "},")
+    end
+end
+
 return M

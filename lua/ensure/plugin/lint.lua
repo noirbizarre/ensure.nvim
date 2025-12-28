@@ -172,4 +172,25 @@ function M:install()
     end
 end
 
+function M:dump_session(choices, lines)
+    if not choices["Linter"] then
+        return
+    end
+
+    local linters = {}
+    for ft, entry in pairs(choices["Linter"]) do
+        linters[ft] = entry.tool
+    end
+
+    if not vim.tbl_isempty(linters) then
+        table.insert(lines, "linters = {")
+        local fts = vim.tbl_keys(linters)
+        table.sort(fts)
+        for _, ft in ipairs(fts) do
+            table.insert(lines, ('    %s = "%s",'):format(ft, linters[ft]))
+        end
+        table.insert(lines, "},")
+    end
+end
+
 return M

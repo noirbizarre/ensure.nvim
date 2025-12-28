@@ -23,6 +23,13 @@ Plugin.command = nil
 ---@diagnostic disable-next-line: unused-local
 function Plugin:install(opts) end
 
+---Dump session choices as configuration lines
+---Override in plugins that support auto-detection to add their specific configuration
+---@param choices ensure.AutoChoices The stored session choices
+---@param lines string[] The lines array to append configuration to
+---@diagnostic disable-next-line: unused-local
+function Plugin:dump_session(choices, lines) end
+
 ---Instantiate a new Plugin
 function Plugin:new()
     local obj = setmetatable({}, { __index = self })

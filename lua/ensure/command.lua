@@ -22,52 +22,10 @@ local session_commands = {
 
         local lines = { "-- Add to your ensure.nvim configuration:" }
 
-        -- Process LSP servers
-        if choices["LSP server"] then
-            local servers = {}
-            for _, entry in pairs(choices["LSP server"]) do
-                table.insert(servers, entry.tool)
-            end
-            if #servers > 0 then
-                table.sort(servers)
-                table.insert(lines, "lsp = {")
-                table.insert(lines, ('    enable = { "%s" },'):format(table.concat(servers, '", "')))
-                table.insert(lines, "},")
-            end
-        end
-
-        -- Process Formatters
-        if choices["Formatter"] then
-            local formatters = {}
-            for ft, entry in pairs(choices["Formatter"]) do
-                formatters[ft] = entry.tool
-            end
-            if not vim.tbl_isempty(formatters) then
-                table.insert(lines, "formatters = {")
-                local fts = vim.tbl_keys(formatters)
-                table.sort(fts)
-                for _, ft in ipairs(fts) do
-                    table.insert(lines, ('    %s = "%s",'):format(ft, formatters[ft]))
-                end
-                table.insert(lines, "},")
-            end
-        end
-
-        -- Process Linters
-        if choices["Linter"] then
-            local linters = {}
-            for ft, entry in pairs(choices["Linter"]) do
-                linters[ft] = entry.tool
-            end
-            if not vim.tbl_isempty(linters) then
-                table.insert(lines, "linters = {")
-                local fts = vim.tbl_keys(linters)
-                table.sort(fts)
-                for _, ft in ipairs(fts) do
-                    table.insert(lines, ('    %s = "%s",'):format(ft, linters[ft]))
-                end
-                table.insert(lines, "},")
-            end
+        -- Delegate to each plugin to add their configuration
+        for _, name in pairs(require("ensure.config").get_plugins()) do
+            local plugin = require(name) --[[@as ensure.Plugin]]
+            plugin:dump_session(choices, lines)
         end
 
         if #lines == 1 then

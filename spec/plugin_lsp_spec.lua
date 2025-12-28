@@ -682,6 +682,92 @@ describe("ensure.plugin.lsp", function()
     -- Note: auto_enable_lsp functionality moved to ensure.auto module
     -- and tested via the auto.enable method
 
+    describe("dump_session", function()
+        it("does nothing when no LSP server choices exist", function()
+            local choices = {}
+            local lines = {}
+
+            plugin:dump_session(choices, lines)
+
+            assert.same({}, lines)
+        end)
+
+        it("does nothing when LSP server choices is empty", function()
+            local choices = { ["LSP server"] = {} }
+            local lines = {}
+
+            plugin:dump_session(choices, lines)
+
+            assert.same({}, lines)
+        end)
+
+        it("generates lsp.enable config for single server", function()
+            local choices = {
+                ["LSP server"] = {
+                    lua = { tool = "lua_ls", package = "lua-language-server" },
+                },
+            }
+            local lines = {}
+
+            plugin:dump_session(choices, lines)
+
+            assert.same({
+                "lsp = {",
+                '    enable = { "lua_ls" },',
+                "},",
+            }, lines)
+        end)
+
+        it("generates sorted lsp.enable config for multiple servers", function()
+            local choices = {
+                ["LSP server"] = {
+                    python = { tool = "pyright", package = "pyright" },
+                    lua = { tool = "lua_ls", package = "lua-language-server" },
+                    typescript = { tool = "ts_ls", package = "typescript-language-server" },
+                },
+            }
+            local lines = {}
+
+            plugin:dump_session(choices, lines)
+
+            assert.same({
+                "lsp = {",
+                '    enable = { "lua_ls", "pyright", "ts_ls" },',
+                "},",
+            }, lines)
+        end)
+
+        it("ignores other choice kinds", function()
+            local choices = {
+                ["Formatter"] = { lua = { tool = "stylua", package = "stylua" } },
+                ["Linter"] = { lua = { tool = "selene", package = "selene" } },
+            }
+            local lines = {}
+
+            plugin:dump_session(choices, lines)
+
+            assert.same({}, lines)
+        end)
+
+        it("appends to existing lines", function()
+            local choices = {
+                ["LSP server"] = {
+                    lua = { tool = "lua_ls", package = "lua-language-server" },
+                },
+            }
+            local lines = { "-- existing line" }
+
+            plugin:dump_session(choices, lines)
+
+            assert.same({
+                "-- existing line",
+                "lsp = {",
+                '    enable = { "lua_ls" },',
+                "},",
+            }, lines)
+        end)
+    end)
+
     describe("install", function()
         it("installs packages for enabled LSPs", function()
             mason.is_enabled = true

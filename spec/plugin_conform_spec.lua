@@ -384,6 +384,94 @@ describe("ensure.plugin.conform", function()
     -- Note: auto_enable_formatter tests removed - functionality moved to ensure.auto module
     -- and tested in spec/auto_spec.lua
 
+    describe("dump_session", function()
+        it("does nothing when no Formatter choices exist", function()
+            local choices = {}
+            local lines = {}
+
+            plugin:dump_session(choices, lines)
+
+            assert.same({}, lines)
+        end)
+
+        it("does nothing when Formatter choices is empty", function()
+            local choices = { ["Formatter"] = {} }
+            local lines = {}
+
+            plugin:dump_session(choices, lines)
+
+            assert.same({}, lines)
+        end)
+
+        it("generates formatters config for single filetype", function()
+            local choices = {
+                ["Formatter"] = {
+                    lua = { tool = "stylua", package = "stylua" },
+                },
+            }
+            local lines = {}
+
+            plugin:dump_session(choices, lines)
+
+            assert.same({
+                "formatters = {",
+                '    lua = "stylua",',
+                "},",
+            }, lines)
+        end)
+
+        it("generates sorted formatters config for multiple filetypes", function()
+            local choices = {
+                ["Formatter"] = {
+                    python = { tool = "ruff_format", package = "ruff" },
+                    lua = { tool = "stylua", package = "stylua" },
+                    javascript = { tool = "prettier", package = "prettier" },
+                },
+            }
+            local lines = {}
+
+            plugin:dump_session(choices, lines)
+
+            assert.same({
+                "formatters = {",
+                '    javascript = "prettier",',
+                '    lua = "stylua",',
+                '    python = "ruff_format",',
+                "},",
+            }, lines)
+        end)
+
+        it("ignores other choice kinds", function()
+            local choices = {
+                ["LSP server"] = { lua = { tool = "lua_ls", package = "lua-language-server" } },
+                ["Linter"] = { lua = { tool = "selene", package = "selene" } },
+            }
+            local lines = {}
+
+            plugin:dump_session(choices, lines)
+
+            assert.same({}, lines)
+        end)
+
+        it("appends to existing lines", function()
+            local choices = {
+                ["Formatter"] = {
+                    lua = { tool = "stylua", package = "stylua" },
+                },
+            }
+            local lines = { "-- existing line" }
+
+            plugin:dump_session(choices, lines)
+
+            assert.same({
+                "-- existing line",
+                "formatters = {",
+                '    lua = "stylua",',
+                "},",
+            }, lines)
+        end)
+    end)
+
     describe("install", function()
         it("installs all known formatters via mason", function()
             local conform = require("conform")

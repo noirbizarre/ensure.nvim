@@ -420,6 +420,94 @@ describe("ensure.plugin.lint", function()
     -- Note: auto_enable_linter tests removed - functionality moved to ensure.auto module
     -- and tested in spec/auto_spec.lua
 
+    describe("dump_session", function()
+        it("does nothing when no Linter choices exist", function()
+            local choices = {}
+            local lines = {}
+
+            plugin:dump_session(choices, lines)
+
+            assert.same({}, lines)
+        end)
+
+        it("does nothing when Linter choices is empty", function()
+            local choices = { ["Linter"] = {} }
+            local lines = {}
+
+            plugin:dump_session(choices, lines)
+
+            assert.same({}, lines)
+        end)
+
+        it("generates linters config for single filetype", function()
+            local choices = {
+                ["Linter"] = {
+                    lua = { tool = "selene", package = "selene" },
+                },
+            }
+            local lines = {}
+
+            plugin:dump_session(choices, lines)
+
+            assert.same({
+                "linters = {",
+                '    lua = "selene",',
+                "},",
+            }, lines)
+        end)
+
+        it("generates sorted linters config for multiple filetypes", function()
+            local choices = {
+                ["Linter"] = {
+                    python = { tool = "ruff", package = "ruff" },
+                    lua = { tool = "selene", package = "selene" },
+                    javascript = { tool = "eslint", package = "eslint_d" },
+                },
+            }
+            local lines = {}
+
+            plugin:dump_session(choices, lines)
+
+            assert.same({
+                "linters = {",
+                '    javascript = "eslint",',
+                '    lua = "selene",',
+                '    python = "ruff",',
+                "},",
+            }, lines)
+        end)
+
+        it("ignores other choice kinds", function()
+            local choices = {
+                ["LSP server"] = { lua = { tool = "lua_ls", package = "lua-language-server" } },
+                ["Formatter"] = { lua = { tool = "stylua", package = "stylua" } },
+            }
+            local lines = {}
+
+            plugin:dump_session(choices, lines)
+
+            assert.same({}, lines)
+        end)
+
+        it("appends to existing lines", function()
+            local choices = {
+                ["Linter"] = {
+                    lua = { tool = "selene", package = "selene" },
+                },
+            }
+            local lines = { "-- existing line" }
+
+            plugin:dump_session(choices, lines)
+
+            assert.same({
+                "-- existing line",
+                "linters = {",
+                '    lua = "selene",',
+                "},",
+            }, lines)
+        end)
+    end)
+
     describe("install", function()
         it("installs all configured linters via mason", function()
             local lint = require("lint")

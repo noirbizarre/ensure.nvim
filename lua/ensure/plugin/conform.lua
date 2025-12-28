@@ -146,4 +146,25 @@ function M:install()
     end
 end
 
+function M:dump_session(choices, lines)
+    if not choices["Formatter"] then
+        return
+    end
+
+    local formatters = {}
+    for ft, entry in pairs(choices["Formatter"]) do
+        formatters[ft] = entry.tool
+    end
+
+    if not vim.tbl_isempty(formatters) then
+        table.insert(lines, "formatters = {")
+        local fts = vim.tbl_keys(formatters)
+        table.sort(fts)
+        for _, ft in ipairs(fts) do
+            table.insert(lines, ('    %s = "%s",'):format(ft, formatters[ft]))
+        end
+        table.insert(lines, "},")
+    end
+end
+
 return M
