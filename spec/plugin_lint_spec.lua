@@ -40,6 +40,52 @@ describe("ensure.plugin.lint", function()
             assert.same({ "ruff" }, lint.linters_by_ft.python)
         end)
 
+        it("clears all linters_by_ft when clear=true", function()
+            local lint = require("lint")
+            lint.linters_by_ft = {
+                javascript = { "eslint" },
+                typescript = { "eslint" },
+            }
+
+            ---@diagnostic disable-next-line: missing-fields
+            plugin:setup({
+                linters = {
+                    auto = false,
+                    clear = true,
+                    lua = "selene",
+                },
+            })
+
+            assert.is_true(plugin.is_installed)
+            -- Previous linters should be cleared
+            assert.is_nil(lint.linters_by_ft.javascript)
+            assert.is_nil(lint.linters_by_ft.typescript)
+            -- New linters should be set
+            assert.same({ "selene" }, lint.linters_by_ft.lua)
+        end)
+
+        it("does not clear linters_by_ft when clear=false", function()
+            local lint = require("lint")
+            lint.linters_by_ft = {
+                javascript = { "eslint" },
+            }
+
+            ---@diagnostic disable-next-line: missing-fields
+            plugin:setup({
+                linters = {
+                    auto = false,
+                    clear = false,
+                    lua = "selene",
+                },
+            })
+
+            assert.is_true(plugin.is_installed)
+            -- Previous linters should be preserved
+            assert.same({ "eslint" }, lint.linters_by_ft.javascript)
+            -- New linters should be set
+            assert.same({ "selene" }, lint.linters_by_ft.lua)
+        end)
+
         it("does nothing when lint is not installed", function()
             local lint = require("lint")
             lint.linters_by_ft = {}

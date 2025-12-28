@@ -43,6 +43,70 @@ describe("ensure.plugin.lsp", function()
             assert.stub(vim.lsp.config).was_called_with("jsonls", match.is_table())
         end)
 
+        it("clears all enabled LSPs and their configs when clear=true", function()
+            helpers.stub(vim.lsp, "enable")
+            helpers.stub(vim.lsp, "config")
+
+            -- Setup existing enabled configs
+            vim.lsp._enabled_configs = {
+                pyright = {},
+                ts_ls = {},
+            }
+            ---@diagnostic disable-next-line: invisible
+            vim.lsp.config._configs = {
+                pyright = { settings = { old = true } },
+                ts_ls = { settings = { old = true } },
+            }
+
+            ---@diagnostic disable-next-line: missing-fields
+            plugin:setup({
+                lsp = {
+                    enable = { "lua_ls" },
+                    disable = {},
+                    clear = true,
+                },
+            })
+
+            -- Should disable existing LSPs
+            assert.stub(vim.lsp.enable).was_called_with("pyright", false)
+            assert.stub(vim.lsp.enable).was_called_with("ts_ls", false)
+            -- Should clear existing configs
+            assert.stub(vim.lsp.config).was_called_with("pyright", {})
+            assert.stub(vim.lsp.config).was_called_with("ts_ls", {})
+            -- Should enable new LSPs
+            assert.stub(vim.lsp.enable).was_called_with({ "lua_ls" })
+        end)
+
+        it("does not clear LSPs when clear=false", function()
+            helpers.stub(vim.lsp, "enable")
+            helpers.stub(vim.lsp, "config")
+
+            -- Setup existing enabled configs
+            vim.lsp._enabled_configs = {
+                pyright = {},
+            }
+            ---@diagnostic disable-next-line: invisible
+            vim.lsp.config._configs = {
+                pyright = { settings = { old = true } },
+            }
+
+            ---@diagnostic disable-next-line: missing-fields
+            plugin:setup({
+                lsp = {
+                    enable = { "lua_ls" },
+                    disable = {},
+                    clear = false,
+                },
+            })
+
+            -- Should not disable existing LSPs
+            assert.stub(vim.lsp.enable).was_not_called_with("pyright", false)
+            -- Should not clear existing configs
+            assert.stub(vim.lsp.config).was_not_called_with("pyright", {})
+            -- Should enable new LSPs
+            assert.stub(vim.lsp.enable).was_called_with({ "lua_ls" })
+        end)
+
         it("normalizes boolean auto=true to table with defaults", function()
             helpers.stub(vim.lsp, "enable")
             helpers.stub(vim.lsp, "config")

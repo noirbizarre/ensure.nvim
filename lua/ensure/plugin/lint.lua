@@ -22,7 +22,7 @@ local LINTER_DEFAULT_IGNORE = {
     "write_good",
 }
 
-local CONFIG_KEYS = { "auto" }
+local CONFIG_KEYS = { "auto", "clear" }
 
 ---Resolve a linter name to a Mason package name
 ---Uses the linter's command to find the corresponding Mason package
@@ -81,6 +81,13 @@ function M:setup(opts)
         return
     end
 
+    local lint = require("lint")
+
+    -- Clear all previously configured linters by filetype if clear=true
+    if opts.linters.clear then
+        lint.linters_by_ft = {}
+    end
+
     -- Create auto-manager with plugin-specific callbacks
     self.auto = auto.AutoManager:new({
         config = opts.linters.auto,
@@ -91,17 +98,14 @@ function M:setup(opts)
             return mason:find_linters_for_filetype(ft)
         end,
         is_configured = function(ft)
-            local lint = require("lint")
             local configured = lint.linters_by_ft[ft]
             return configured and #configured > 0
         end,
         configure = function(entry, ft)
-            local lint = require("lint")
             lint.linters_by_ft[ft] = { entry.tool }
         end,
     })
 
-    local lint = require("lint")
     for ft, linters in pairs(opts.linters) do
         if not vim.list_contains(CONFIG_KEYS, ft) then
             lint.linters_by_ft[ft] = util.string_list(linters)

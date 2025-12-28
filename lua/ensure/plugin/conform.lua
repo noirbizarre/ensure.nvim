@@ -15,7 +15,7 @@ local FORMATTER_DEFAULT_IGNORE = {
     "typos",
 }
 
-local CONFIG_KEYS = { "auto" }
+local CONFIG_KEYS = { "auto", "clear" }
 
 ---Resolve a formatter name to a Mason package name
 ---Uses the formatter's command to find the corresponding Mason package
@@ -52,6 +52,13 @@ function M:setup(opts)
         return
     end
 
+    local conform = require("conform")
+
+    -- Clear all previously configured formatters by filetype if clear=true
+    if opts.formatters.clear then
+        conform.formatters_by_ft = {}
+    end
+
     -- Create auto-manager with plugin-specific callbacks
     self.auto = auto.AutoManager:new({
         config = opts.formatters.auto,
@@ -62,17 +69,14 @@ function M:setup(opts)
             return mason:find_formatters_for_filetype(ft)
         end,
         is_configured = function(ft)
-            local conform = require("conform")
             local configured = conform.formatters_by_ft[ft]
             return configured and #configured > 0
         end,
         configure = function(entry, ft)
-            local conform = require("conform")
             conform.formatters_by_ft[ft] = { entry.tool }
         end,
     })
 
-    local conform = require("conform")
     for ft, formatters in pairs(opts.formatters) do
         if not vim.list_contains(CONFIG_KEYS, ft) then
             conform.formatters_by_ft[ft] = util.string_list(formatters)

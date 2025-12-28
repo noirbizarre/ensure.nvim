@@ -49,6 +49,52 @@ describe("ensure.plugin.conform", function()
             assert.same({ "ruff_format" }, conform.formatters_by_ft.python)
         end)
 
+        it("clears all formatters_by_ft when clear=true", function()
+            local conform = require("conform")
+            conform.formatters_by_ft = {
+                javascript = { "prettier" },
+                typescript = { "prettier" },
+            }
+
+            ---@diagnostic disable-next-line: missing-fields
+            plugin:setup({
+                formatters = {
+                    auto = false,
+                    clear = true,
+                    lua = "stylua",
+                },
+            })
+
+            assert.is_true(plugin.is_installed)
+            -- Previous formatters should be cleared
+            assert.is_nil(conform.formatters_by_ft.javascript)
+            assert.is_nil(conform.formatters_by_ft.typescript)
+            -- New formatters should be set
+            assert.same({ "stylua" }, conform.formatters_by_ft.lua)
+        end)
+
+        it("does not clear formatters_by_ft when clear=false", function()
+            local conform = require("conform")
+            conform.formatters_by_ft = {
+                javascript = { "prettier" },
+            }
+
+            ---@diagnostic disable-next-line: missing-fields
+            plugin:setup({
+                formatters = {
+                    auto = false,
+                    clear = false,
+                    lua = "stylua",
+                },
+            })
+
+            assert.is_true(plugin.is_installed)
+            -- Previous formatters should be preserved
+            assert.same({ "prettier" }, conform.formatters_by_ft.javascript)
+            -- New formatters should be set
+            assert.same({ "stylua" }, conform.formatters_by_ft.lua)
+        end)
+
         it("normalizes boolean auto=true to table with defaults", function()
             local conform = require("conform")
             conform.formatters_by_ft = {}

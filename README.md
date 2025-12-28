@@ -170,6 +170,38 @@ return {
 These are automatically merged. The following lists support `lazy.nvim` merging out of the box:
 `packages`, `parsers`, `plugins`, `lsp.enable`, `lsp.disable`, `ignore.packages`, `ignore.parsers`
 
+### Clearing Previous Configuration
+
+When using modular or project-specific configuration, you may want to completely replace previous settings rather than merge with them. Use the `clear` option:
+
+```lua
+-- .lazy.lua (project-specific)
+return {
+    "noirbizarre/ensure.nvim",
+    opts = {
+        lsp = {
+            clear = true,  -- Disable all previously enabled LSPs and clear their configs
+            enable = { "pylsp" },  -- Only use pylsp for this project
+        },
+        formatters = {
+            clear = true,  -- Remove all previously configured formatters
+            python = "black",  -- Only use black
+        },
+        linters = {
+            clear = true,  -- Remove all previously configured linters
+            python = "pylint",  -- Only use pylint
+        },
+    },
+}
+```
+
+The `clear` option (default: `false`):
+- **`lsp.clear`**: Disables all currently enabled LSP servers and clears their configurations
+- **`formatters.clear`**: Removes all entries from `conform.formatters_by_ft`
+- **`linters.clear`**: Removes all entries from `lint.linters_by_ft`
+
+This is useful when you want project-specific tooling without inheriting your global configuration.
+
 ## Commands
 
 | Command | Description |
@@ -292,6 +324,7 @@ Run `:checkhealth ensure` to verify your setup.
             enable = {},   -- Servers to enable
             disable = {},  -- Servers to disable (takes precedence)
             auto = false,  -- Auto-detect servers (boolean or table)
+            clear = false, -- Clear all previously enabled LSPs and their configs
             -- Server configs are passed to vim.lsp.config()
             server_name = { settings = {} },
         },
@@ -299,12 +332,14 @@ Run `:checkhealth ensure` to verify your setup.
         -- Formatters (conform.nvim)
         formatters = {
             auto = false,  -- Auto-detect formatters
+            clear = false, -- Clear all previously configured formatters
             filetype = { "formatter1", "formatter2" },
         },
 
         -- Linters (nvim-lint)
         linters = {
             auto = false,  -- Auto-detect linters
+            clear = false, -- Clear all previously configured linters
             filetype = { "linter1" },
         },
 

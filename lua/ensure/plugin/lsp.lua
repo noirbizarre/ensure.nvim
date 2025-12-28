@@ -21,7 +21,7 @@ local LSP_DEFAULT_IGNORE = {
     "vale_ls",
 }
 
-local CONFIG_KEYS = { "enable", "disable", "auto" }
+local CONFIG_KEYS = { "enable", "disable", "auto", "clear" }
 
 ---Resolve an LSP server name to a Mason package name
 ---Returns nil if the LSP server is already available or not found in Mason
@@ -94,6 +94,19 @@ function M:setup(opts)
             vim.lsp.enable(entry.tool)
         end,
     })
+
+    -- Clear all previously enabled LSPs and their configs if clear=true
+    if opts.lsp.clear then
+        -- Disable all currently enabled LSPs
+        for lsp, _ in pairs(vim.lsp._enabled_configs) do
+            vim.lsp.enable(lsp, false)
+        end
+        -- Clear all LSP configs (only the config part, not the descriptor)
+        ---@diagnostic disable-next-line: invisible
+        for name, _ in pairs(vim.lsp.config._configs) do
+            vim.lsp.config(name, {})
+        end
+    end
 
     local to_enable = {}
     for _, lsp in pairs(opts.lsp.enable) do

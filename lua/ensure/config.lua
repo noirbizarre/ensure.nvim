@@ -9,12 +9,15 @@
 ---@field enable string[] List of LSP server names to ensure are installed via mason.nvim and enabled
 ---@field disable string[] List of LSP server names to ensure are not enabled (allow by-project disabling)
 ---@field auto LspAuto Auto-detection config: boolean or table with enable/ignore/multi fields
+---@field clear boolean When true, disable all previously enabled LSPs and clear their configs (default: false)
 
 ---@class FormattersConfig: {[string]: string|string[]}
 ---@field auto ToolAuto Auto-detection config: boolean or table with enable/ignore/multi fields
+---@field clear boolean When true, clear all previously configured formatters by filetype (default: false)
 
 ---@class LintersConfig: {[string]: string|string[]}
 ---@field auto ToolAuto Auto-detection config: boolean or table with enable/ignore/multi fields
+---@field clear boolean When true, clear all previously configured linters by filetype (default: false)
 
 ---@class IgnoreConfig
 ---@field packages string[] List of package names to ignore when ensuring installation via mason.nvim
@@ -44,14 +47,17 @@ local defaults = {
     },
     formatters = {
         auto = false,
+        clear = false,
     },
     linters = {
         auto = false,
+        clear = false,
     },
     lsp = {
         enable = {},
         disable = {},
         auto = false,
+        clear = false,
     },
     ignore = {
         packages = {},
