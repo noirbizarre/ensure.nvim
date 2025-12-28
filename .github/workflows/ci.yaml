@@ -24,7 +24,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .tests
-          key: ${{ runner.os }}-tests-${{ hashFiles('tests/minit.lua') }}
+          key: ${{ runner.os }}-tests-${{ hashFiles('scripts/test.lua') }}
 
       - name: Run Tests
         run: scripts/test.lua -v
