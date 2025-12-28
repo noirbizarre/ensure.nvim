@@ -6,11 +6,10 @@ load(vim.fn.system("curl -s https://raw.githubusercontent.com/folke/lazy.nvim/ma
 -- Setup lazy.nvim
 require("lazy.minit").busted({
     spec = {
-        "williamboman/mason-lspconfig.nvim",
-        "williamboman/mason.nvim",
-        "nvim-treesitter/nvim-treesitter",
         "mfussenegger/nvim-lint",
+        "nvim-treesitter/nvim-treesitter",
         "stevearc/conform.nvim",
+        "williamboman/mason.nvim",
         { dir = vim.uv.cwd() },
     },
 })
