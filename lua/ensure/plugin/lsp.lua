@@ -171,10 +171,13 @@ function M:autoinstall(ft)
     end
 
     mason:install_packages(packages, function(package)
-        -- Restart the LSP for the current buffer if it was just installed
+        -- Start the LSP for the current buffer if it was just installed and not already attached
         local lsp = mason:lsp_from_package(package) or package
-        vim.lsp.enable(lsp, false)
-        vim.lsp.enable(lsp, true)
+        local clients = vim.lsp.get_clients({ name = lsp })
+        if #clients == 0 then
+            vim.lsp.enable(lsp, false)
+            vim.lsp.enable(lsp, true)
+        end
     end)
 
     -- Auto-detection: trigger if no non-ignored LSP is enabled
@@ -203,10 +206,13 @@ function M:install(opts)
 
     if #packages > 0 then
         mason:install_packages(packages, function(package)
-            -- Restart the LSP for the current buffer if it was just installed
+            -- Start the LSP for the current buffer if it was just installed and not already attached
             local lsp = mason:lsp_from_package(package) or package
-            vim.lsp.enable(lsp, false)
-            vim.lsp.enable(lsp, true)
+            local clients = vim.lsp.get_clients({ name = lsp })
+            if #clients == 0 then
+                vim.lsp.enable(lsp, false)
+                vim.lsp.enable(lsp, true)
+            end
         end)
     end
 end
