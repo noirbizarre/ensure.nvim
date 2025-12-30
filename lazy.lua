@@ -1,6 +1,6 @@
 return {
     "noirbizarre/ensure.nvim",
-    event = "BufReadPre",
+    event = { "BufNewFile", "BufRead" },
     cmd = "Ensure",
     dependencies = {
         { "mason-org/mason.nvim", optional = true },
