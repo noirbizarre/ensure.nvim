@@ -44,11 +44,15 @@ function M:health()
 end
 
 ---Autocommand callback installing missing parser for the current filetype
+---Uses vim.treesitter.language.get_lang() to resolve filetype to parser name,
+---supporting user-registered filetypes via vim.treesitter.language.register()
 function M:autoinstall(ft)
     if self.is_installed then
         local ts = require("nvim-treesitter")
-        if not vim.list_contains(self.ignore, ft) and vim.list_contains(ts.get_available(), ft) then
-            ts.install({ ft })
+        -- Resolve filetype to parser name (e.g., "typescriptreact" -> "tsx", "sh" -> "bash")
+        local lang = vim.treesitter.language.get_lang(ft) or ft
+        if not vim.list_contains(self.ignore, lang) and vim.list_contains(ts.get_available(), lang) then
+            ts.install({ lang })
         end
     end
 end

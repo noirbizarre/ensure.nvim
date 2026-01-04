@@ -102,6 +102,22 @@ By default, tree-sitter parsers are automatically installed on startup. To disab
 }
 ```
 
+### Custom Filetype-to-Parser Mappings
+
+`ensure.nvim` automatically resolves filetypes to parser names using `vim.treesitter.language.get_lang()`. This means:
+
+- Built-in mappings work out of the box (e.g., `sh` → `bash`, `help` → `vimdoc`, `typescriptreact` → `tsx`)
+- User-registered filetypes via `vim.treesitter.language.register()` are supported
+
+For example, if you have a custom filetype that should use an existing parser:
+
+```lua
+-- Register your custom filetype to use the python parser
+vim.treesitter.language.register("python", "mycustomft")
+
+-- ensure.nvim will automatically install the python parser when opening mycustomft files
+```
+
 ### Fine-Grained Auto-Detection
 
 ```lua

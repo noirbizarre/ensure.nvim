@@ -1,5 +1,4 @@
 local helpers = require("spec.helpers")
-local match = require("luassert.match")
 
 describe("ensure.plugin.treesitter", function()
     before_each(function()
@@ -112,6 +111,62 @@ describe("ensure.plugin.treesitter", function()
         ts.install:clear()
         plugin:autoinstall("rust")
         assert.stub(ts.install).was_not_called()
+    end)
+
+    it("autoinstalls parser using vim.treesitter.language.get_lang() mapping", function()
+        helpers.stub(ts, "install")
+        helpers.stub(ts, "get_available", function()
+            return { "bash", "tsx", "vimdoc" }
+        end)
+
+        plugin.is_installed = true
+        plugin.ignore = {}
+
+        -- Test filetypes that map to different parser names
+        plugin:autoinstall("sh") -- maps to "bash"
+        assert.stub(ts.install).was_called_with({ "bash" })
+
+        ts.install:clear()
+        plugin:autoinstall("typescriptreact") -- maps to "tsx"
+        assert.stub(ts.install).was_called_with({ "tsx" })
+
+        ts.install:clear()
+        plugin:autoinstall("help") -- maps to "vimdoc"
+        assert.stub(ts.install).was_called_with({ "vimdoc" })
+    end)
+
+    it("respects ignore list for resolved parser names", function()
+        helpers.stub(ts, "install")
+        helpers.stub(ts, "get_available", function()
+            return { "bash", "tsx" }
+        end)
+
+        plugin.is_installed = true
+        plugin.ignore = { "bash" } -- ignore the parser name, not filetype
+
+        -- "sh" resolves to "bash" which is ignored
+        plugin:autoinstall("sh")
+        assert.stub(ts.install).was_not_called()
+
+        -- "bash" is directly ignored
+        plugin:autoinstall("bash")
+        assert.stub(ts.install).was_not_called()
+    end)
+
+    it("supports user-registered filetypes via vim.treesitter.language.register()", function()
+        helpers.stub(ts, "install")
+        helpers.stub(ts, "get_available", function()
+            return { "python" }
+        end)
+
+        plugin.is_installed = true
+        plugin.ignore = {}
+
+        -- Register a custom filetype to use an existing parser
+        vim.treesitter.language.register("python", "mycustomft")
+
+        plugin:autoinstall("mycustomft")
+        assert.stub(ts.install).was_called_with({ "python" })
     end)
 
     it("installs missing, non-ignored parsers", function()
