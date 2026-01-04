@@ -80,4 +80,29 @@ describe("ensure.init", function()
         assert.stub(plugin1.methods.autoinstall).was_called_with(match.is_ref(plugin1), "lua")
         assert.stub(plugin2.methods.autoinstall).was_called_with(match.is_ref(plugin2), "lua")
     end)
+
+    it("autoinstall splits compound filetypes and calls plugins for each part", function()
+        vim.bo.filetype = "html.handlebars"
+        helpers.stub(config, "get_plugins", { "plugin.one" })
+        local plugin = helpers.plugin("plugin.one")
+
+        ensure.autoinstall()
+
+        assert.stub(plugin.methods.autoinstall).was_called(2)
+        assert.stub(plugin.methods.autoinstall).was_called_with(match.is_ref(plugin), "html")
+        assert.stub(plugin.methods.autoinstall).was_called_with(match.is_ref(plugin), "handlebars")
+    end)
+
+    it("autoinstall handles triple compound filetypes", function()
+        vim.bo.filetype = "a.b.c"
+        helpers.stub(config, "get_plugins", { "plugin.one" })
+        local plugin = helpers.plugin("plugin.one")
+
+        ensure.autoinstall()
+
+        assert.stub(plugin.methods.autoinstall).was_called(3)
+        assert.stub(plugin.methods.autoinstall).was_called_with(match.is_ref(plugin), "a")
+        assert.stub(plugin.methods.autoinstall).was_called_with(match.is_ref(plugin), "b")
+        assert.stub(plugin.methods.autoinstall).was_called_with(match.is_ref(plugin), "c")
+    end)
 end)

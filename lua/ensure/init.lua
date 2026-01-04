@@ -47,9 +47,14 @@ function M.autoinstall()
         return
     end
 
+    local util = require("ensure.util")
+    local filetypes = util.split_filetypes(ft)
+
     for _, name in pairs(require("ensure.config").get_plugins()) do
         local plugin = require(name) --[[@as ensure.Plugin]]
-        plugin:autoinstall(ft)
+        for _, filetype in ipairs(filetypes) do
+            plugin:autoinstall(filetype)
+        end
     end
 end
 

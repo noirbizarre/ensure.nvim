@@ -10,6 +10,22 @@ function M.string_list(value)
     end
 end
 
+---Split a compound filetype into its parts.
+---Neovim allows compound filetypes like "html.handlebars" or "snakemake.python"
+---where multiple filetypes are combined with a dot separator.
+---@param ft string The filetype to split
+---@return string[] parts The list of filetype parts
+function M.split_filetypes(ft)
+    if not ft or ft == "" then
+        return {}
+    end
+    local parts = {}
+    for part in string.gmatch(ft, "[^.]+") do
+        table.insert(parts, part)
+    end
+    return parts
+end
+
 ---A basic queue implementation.
 ---@class ensure.Queue
 ---@field first number
