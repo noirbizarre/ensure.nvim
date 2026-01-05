@@ -11,8 +11,9 @@ local M = Plugin:new()
 local LSP_DEFAULT_IGNORE = {
     "copilot", -- AI assistant
     -- Grammar/spelling LSPs
-    "harper_ls",
+    "codebook",
     "grammarly",
+    "harper_ls",
     "ltex",
     "ltex_plus",
     "prosemd_lsp",
