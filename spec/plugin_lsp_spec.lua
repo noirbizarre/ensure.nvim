@@ -235,6 +235,27 @@ describe("ensure.plugin.lsp", function()
             assert.is_true(plugin.auto.config.enable)
             assert.is_false(plugin.auto.config.multi)
         end)
+
+        it("adds disabled LSPs to auto ignore list", function()
+            helpers.stub(vim.lsp, "enable")
+            helpers.stub(vim.lsp, "config")
+
+            ---@diagnostic disable-next-line: missing-fields
+            plugin:setup({
+                lsp = {
+                    enable = {},
+                    disable = { "pyright", "pylsp" },
+                    auto = true,
+                },
+            })
+
+            assert.is_table(plugin.auto.config)
+            -- Disabled LSPs should be in the ignore list
+            assert.is_true(vim.list_contains(plugin.auto.config.ignore, "pyright"))
+            assert.is_true(vim.list_contains(plugin.auto.config.ignore, "pylsp"))
+            -- Default ignores should still be present
+            assert.is_true(vim.list_contains(plugin.auto.config.ignore, "copilot"))
+        end)
     end)
 
     describe("health", function()

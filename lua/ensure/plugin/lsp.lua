@@ -105,9 +105,11 @@ end
 
 function M:setup(opts)
     -- Create auto-manager with plugin-specific callbacks and defaults
+    -- Include disabled LSPs in the ignore list to prevent auto-enabling them
+    local ignore_list = vim.list_extend(vim.deepcopy(LSP_DEFAULT_IGNORE), opts.lsp.disable)
     self.auto = auto.AutoManager:new({
         config = opts.lsp.auto,
-        defaults = { ignore = LSP_DEFAULT_IGNORE },
+        defaults = { ignore = ignore_list },
         mason = mason,
         kind = "LSP server",
         find_available = function(ft)
