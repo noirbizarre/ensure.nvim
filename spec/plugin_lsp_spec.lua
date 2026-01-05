@@ -504,20 +504,20 @@ describe("ensure.plugin.lsp", function()
             mason.is_enabled = true
             plugin.auto.config = { enable = true, ignore = {}, multi = true }
             helpers.stub(mason, "install_packages")
-            helpers.stub(mason, "find_lsps_for_filetype", {})
+            helpers.stub(plugin, "find_lsps_for_filetype", {})
 
             vim.lsp._enabled_configs = {}
 
             plugin:autoinstall("lua")
 
-            assert.stub(mason.find_lsps_for_filetype).was_called_with(match.is_ref(mason), "lua")
+            assert.stub(plugin.find_lsps_for_filetype).was_called_with(match.is_ref(plugin), "lua")
         end)
 
         it("auto-enables single LSP when only one is available", function()
             mason.is_enabled = true
             plugin.auto.config = { enable = true, ignore = {}, multi = true }
             helpers.stub(mason, "install_packages")
-            helpers.stub(mason, "find_lsps_for_filetype", {
+            helpers.stub(plugin, "find_lsps_for_filetype", {
                 { tool = "lua_ls", package = "lua-language-server" },
             })
             helpers.stub(plugin.auto, "enable")
@@ -535,7 +535,7 @@ describe("ensure.plugin.lsp", function()
             mason.is_enabled = true
             plugin.auto.config = { enable = true, ignore = {}, multi = true }
             helpers.stub(mason, "install_packages")
-            helpers.stub(mason, "find_lsps_for_filetype", {
+            helpers.stub(plugin, "find_lsps_for_filetype", {
                 { tool = "pyright", package = "pyright" },
                 { tool = "pylsp", package = "python-lsp-server" },
             })
@@ -555,7 +555,7 @@ describe("ensure.plugin.lsp", function()
             mason.is_enabled = true
             plugin.auto.config = { enable = true, ignore = {}, multi = false }
             helpers.stub(mason, "install_packages")
-            helpers.stub(mason, "find_lsps_for_filetype", {
+            helpers.stub(plugin, "find_lsps_for_filetype", {
                 { tool = "pyright", package = "pyright" },
                 { tool = "pylsp", package = "python-lsp-server" },
             })
@@ -574,7 +574,7 @@ describe("ensure.plugin.lsp", function()
             mason.is_enabled = true
             plugin.auto.config = { enable = true, ignore = {}, multi = false }
             helpers.stub(mason, "install_packages")
-            helpers.stub(mason, "find_lsps_for_filetype", {
+            helpers.stub(plugin, "find_lsps_for_filetype", {
                 { tool = "lua_ls", package = "lua-language-server" },
             })
             helpers.stub(plugin.auto, "enable")
@@ -592,7 +592,7 @@ describe("ensure.plugin.lsp", function()
             mason.is_enabled = true
             plugin.auto.config = { enable = true, ignore = {}, multi = true }
             helpers.stub(mason, "install_packages")
-            helpers.stub(mason, "find_lsps_for_filetype", {})
+            helpers.stub(plugin, "find_lsps_for_filetype", {})
             helpers.stub(plugin.auto, "enable")
             helpers.stub(plugin.auto, "prompt_selection")
 
@@ -610,7 +610,7 @@ describe("ensure.plugin.lsp", function()
             mason.is_enabled = true
             plugin.auto.config = { enable = true, ignore = { "copilot" }, multi = true }
             helpers.stub(mason, "install_packages")
-            helpers.stub(mason, "find_lsps_for_filetype", {
+            helpers.stub(plugin, "find_lsps_for_filetype", {
                 { tool = "lua_ls", package = "lua-language-server" },
             })
             helpers.stub(plugin, "resolve_package", nil)
@@ -626,7 +626,7 @@ describe("ensure.plugin.lsp", function()
             plugin:autoinstall("lua")
 
             -- Should still run auto-detection since copilot is ignored
-            assert.stub(mason.find_lsps_for_filetype).was_called_with(match.is_ref(mason), "lua")
+            assert.stub(plugin.find_lsps_for_filetype).was_called_with(match.is_ref(plugin), "lua")
             assert.stub(plugin.auto.enable).was_called()
         end)
 
@@ -634,7 +634,7 @@ describe("ensure.plugin.lsp", function()
             mason.is_enabled = true
             plugin.auto.config = { enable = true, ignore = { "copilot" }, multi = true }
             helpers.stub(mason, "install_packages")
-            helpers.stub(mason, "find_lsps_for_filetype", {})
+            helpers.stub(plugin, "find_lsps_for_filetype", {})
             helpers.stub(plugin, "resolve_package", function(_, lsp)
                 if lsp == "copilot" then
                     return "copilot-language-server"
@@ -660,7 +660,7 @@ describe("ensure.plugin.lsp", function()
             mason.is_enabled = true
             plugin.auto.config = { enable = true, ignore = { "ltex", "ltex_plus" }, multi = true }
             helpers.stub(mason, "install_packages")
-            helpers.stub(mason, "find_lsps_for_filetype", {
+            helpers.stub(plugin, "find_lsps_for_filetype", {
                 { tool = "lua_ls", package = "lua-language-server" },
                 { tool = "ltex", package = "ltex-ls" },
                 { tool = "ltex_plus", package = "ltex-ls-plus" },
@@ -681,7 +681,7 @@ describe("ensure.plugin.lsp", function()
             mason.is_enabled = true
             plugin.auto.config = { enable = true, ignore = { "ltex" }, multi = true }
             helpers.stub(mason, "install_packages")
-            helpers.stub(mason, "find_lsps_for_filetype", {
+            helpers.stub(plugin, "find_lsps_for_filetype", {
                 { tool = "pyright", package = "pyright" },
                 { tool = "pylsp", package = "python-lsp-server" },
                 { tool = "ltex", package = "ltex-ls" },
@@ -703,7 +703,7 @@ describe("ensure.plugin.lsp", function()
             mason.is_enabled = true
             plugin.auto.config = { enable = true, ignore = { "ltex", "ltex_plus" }, multi = true }
             helpers.stub(mason, "install_packages")
-            helpers.stub(mason, "find_lsps_for_filetype", {
+            helpers.stub(plugin, "find_lsps_for_filetype", {
                 { tool = "ltex", package = "ltex-ls" },
                 { tool = "ltex_plus", package = "ltex-ls-plus" },
             })
@@ -723,7 +723,7 @@ describe("ensure.plugin.lsp", function()
             mason.is_enabled = true
             plugin.auto.config = { enable = true, ignore = { "copilot" }, multi = true }
             helpers.stub(mason, "install_packages")
-            helpers.stub(mason, "find_lsps_for_filetype")
+            helpers.stub(plugin, "find_lsps_for_filetype")
             helpers.stub(plugin, "resolve_package", nil)
 
             -- Both copilot (ignored) and lua_ls (not ignored) are enabled
@@ -739,7 +739,117 @@ describe("ensure.plugin.lsp", function()
             plugin:autoinstall("lua")
 
             -- lua_ls is enabled and not ignored, so auto-detection should not run
-            assert.stub(mason.find_lsps_for_filetype).was_not_called()
+            assert.stub(plugin.find_lsps_for_filetype).was_not_called()
+        end)
+    end)
+
+    describe("find_lsps_for_filetype", function()
+        it("skips deprecated LSPs by catching vim.deprecate", function()
+            mason._lsp_to_mason = {
+                lua_ls = "lua-language-server",
+                tsserver = "typescript-language-server", -- deprecated
+                ruff_lsp = "ruff", -- deprecated
+                pyright = "pyright",
+            }
+            helpers.stub(mason, "build_mappings_sync")
+
+            -- Mock vim.lsp.config to return configs and trigger deprecation for deprecated LSPs
+            local mock_configs = {
+                lua_ls = { filetypes = { "lua" } },
+                tsserver = { filetypes = { "typescript", "javascript" } },
+                ruff_lsp = { filetypes = { "python" } },
+                pyright = { filetypes = { "python" } },
+            }
+            local deprecated_lsps = { tsserver = true, ruff_lsp = true }
+            setmetatable(vim.lsp.config, {
+                __index = function(_, key)
+                    -- Simulate nvim-lspconfig triggering vim.deprecate for deprecated LSPs
+                    if deprecated_lsps[key] then
+                        vim.deprecate(key, "new_name", "1.0", "nvim-lspconfig")
+                    end
+                    return mock_configs[key]
+                end,
+            })
+
+            local results = plugin:find_lsps_for_filetype("python")
+
+            -- Should only return pyright, not ruff_lsp (deprecated)
+            assert.equal(#results, 1)
+            assert.equal(results[1].tool, "pyright")
+            assert.equal(results[1].package, "pyright")
+        end)
+
+        it("does not emit deprecation warnings during scanning", function()
+            mason._lsp_to_mason = {
+                tsserver = "typescript-language-server",
+            }
+            helpers.stub(mason, "build_mappings_sync")
+            helpers.spy(vim, "deprecate")
+
+            local mock_configs = {
+                tsserver = { filetypes = { "typescript" } },
+            }
+            setmetatable(vim.lsp.config, {
+                __index = function(_, key)
+                    -- Simulate deprecation call
+                    vim.deprecate(key, "ts_ls", "1.0", "nvim-lspconfig")
+                    return mock_configs[key]
+                end,
+            })
+
+            plugin:find_lsps_for_filetype("typescript")
+
+            assert.stub(vim.deprecate).was_not_called()
+        end)
+
+        it("returns non-deprecated LSPs for filetype", function()
+            mason._lsp_to_mason = {
+                lua_ls = "lua-language-server",
+                pyright = "pyright",
+            }
+            helpers.stub(mason, "build_mappings_sync")
+
+            local mock_configs = {
+                lua_ls = { filetypes = { "lua" } },
+                pyright = { filetypes = { "python" } },
+            }
+            setmetatable(vim.lsp.config, {
+                __index = function(_, key)
+                    return mock_configs[key]
+                end,
+            })
+
+            local results = plugin:find_lsps_for_filetype("lua")
+
+            assert.equal(#results, 1)
+            assert.equal(results[1].tool, "lua_ls")
+            assert.equal(results[1].package, "lua-language-server")
+        end)
+
+        it("handles errors when loading LSP config gracefully", function()
+            mason._lsp_to_mason = {
+                lua_ls = "lua-language-server",
+                broken_lsp = "broken-package",
+            }
+            helpers.stub(mason, "build_mappings_sync")
+
+            local mock_configs = {
+                lua_ls = { filetypes = { "lua" } },
+            }
+            setmetatable(vim.lsp.config, {
+                __index = function(_, key)
+                    if key == "broken_lsp" then
+                        error("Failed to load LSP config")
+                    end
+                    return mock_configs[key]
+                end,
+            })
+
+            local results = plugin:find_lsps_for_filetype("lua")
+
+            -- Should still return lua_ls, gracefully skipping the broken one
+            assert.equal(#results, 1)
+            assert.equal(results[1].tool, "lua_ls")
         end)
     end)
 
@@ -753,7 +863,7 @@ describe("ensure.plugin.lsp", function()
 
             plugin:dump_session(choices, lines)
 
-            assert.same({}, lines)
+            assert.same(lines, {})
         end)
 
         it("does nothing when LSP server choices is empty", function()
@@ -762,7 +872,7 @@ describe("ensure.plugin.lsp", function()
 
             plugin:dump_session(choices, lines)
 
-            assert.same({}, lines)
+            assert.same(lines, {})
         end)
 
         it("generates lsp.enable config for single server", function()
@@ -775,11 +885,11 @@ describe("ensure.plugin.lsp", function()
 
             plugin:dump_session(choices, lines)
 
-            assert.same({
+            assert.same(lines, {
                 "lsp = {",
                 '    enable = { "lua_ls" },',
                 "},",
-            }, lines)
+            })
         end)
 
         it("generates sorted lsp.enable config for multiple servers", function()
@@ -794,11 +904,11 @@ describe("ensure.plugin.lsp", function()
 
             plugin:dump_session(choices, lines)
 
-            assert.same({
+            assert.same(lines, {
                 "lsp = {",
                 '    enable = { "lua_ls", "pyright", "ts_ls" },',
                 "},",
-            }, lines)
+            })
         end)
 
         it("ignores other choice kinds", function()
@@ -810,7 +920,7 @@ describe("ensure.plugin.lsp", function()
 
             plugin:dump_session(choices, lines)
 
-            assert.same({}, lines)
+            assert.same(lines, {})
         end)
 
         it("appends to existing lines", function()
@@ -823,12 +933,12 @@ describe("ensure.plugin.lsp", function()
 
             plugin:dump_session(choices, lines)
 
-            assert.same({
+            assert.same(lines, {
                 "-- existing line",
                 "lsp = {",
                 '    enable = { "lua_ls" },',
                 "},",
-            }, lines)
+            })
         end)
     end)
 

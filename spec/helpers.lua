@@ -39,6 +39,18 @@ function M.stub(object, key, ...)
     return object[key]
 end
 
+---Create a spy that will be reverted on teardown
+---@param object table The object to stub
+---@param key string The key to stub
+---@param ... any Additional arguments to pass to stub
+---@return luassert.spy The created spy
+function M.spy(object, key)
+    local spy = require("luassert.spy")
+    spy.on(object, key)
+    table.insert(revertables, object[key])
+    return object[key]
+end
+
 ---Create a mock that will be reverted on teardown
 ---@param object table The object to mock
 ---@param doStub boolean Whether to stub methods

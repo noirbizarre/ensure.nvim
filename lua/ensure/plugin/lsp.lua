@@ -23,6 +23,43 @@ local LSP_DEFAULT_IGNORE = {
 
 local CONFIG_KEYS = { "enable", "disable", "auto", "clear" }
 
+---Find available LSPs for a filetype, filtering out deprecated ones
+---Suppresses deprecation warnings during scanning by temporarily wrapping vim.deprecate
+---@param ft string The filetype to search for
+---@return ensure.AutoEntry[] List of available LSP entries
+function M:find_lsps_for_filetype(ft)
+    mason:build_mappings_sync()
+    local results = {}
+
+    -- Temporarily suppress deprecation warnings during LSP config scanning
+    local original_deprecate = vim.deprecate
+    local deprecated_lsp = nil
+    vim.deprecate = function(name, ...)
+        deprecated_lsp = name
+        -- Don't call original - suppress the warning
+    end
+
+    for lsp_name, package_name in pairs(mason._lsp_to_mason or {}) do
+        deprecated_lsp = nil
+        -- Use vim.lsp.config[lsp_name] to trigger lazy-loading from lsp/*.lua runtime files
+        local ok, config = pcall(function()
+            return vim.lsp.config[lsp_name]
+        end)
+        -- Skip if this LSP triggered a deprecation warning
+        if not deprecated_lsp and ok and config and config.filetypes and vim.list_contains(config.filetypes, ft) then
+            table.insert(results, {
+                tool = lsp_name,
+                package = package_name,
+            })
+        end
+    end
+
+    -- Restore original vim.deprecate
+    vim.deprecate = original_deprecate
+
+    return results
+end
+
 ---Resolve an LSP server name to a Mason package name
 ---Returns nil if the LSP server is already available or not found in Mason
 ---@param lsp_name string The LSP server name
@@ -74,7 +111,7 @@ function M:setup(opts)
         mason = mason,
         kind = "LSP server",
         find_available = function(ft)
-            return mason:find_lsps_for_filetype(ft)
+            return M:find_lsps_for_filetype(ft)
         end,
         is_configured = function(ft)
             -- Check if any non-ignored LSP is enabled for this filetype
