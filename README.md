@@ -248,6 +248,7 @@ require("ensure").install({ all = true })
 ```
 
 `ensure.nvim` also automatically installs missing tools when you open a file (`BufRead`/`BufNewFile`).
+This behavior is controlled by the `autocmd` option (default: `true`).
 To trigger that logic manually for the current buffer:
 
 ```lua
@@ -343,6 +344,9 @@ Run `:checkhealth ensure` to verify your setup.
     opts = {
         -- Install all tools on startup (default: false)
         install = false,
+
+        -- Create BufRead/BufNewFile autoinstall autocmd (default: true)
+        autocmd = true,
 
         -- Mason packages
         packages = {

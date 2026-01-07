@@ -41,6 +41,18 @@ describe("ensure.init", function()
             .was_called_with("Ensure", match.is_function(), match.table_with({ nargs = "*", bang = true }))
     end)
 
+    it("does not register autocommands when opts.autocmd is false", function()
+        helpers.stub(vim.api, "nvim_create_autocmd")
+        helpers.stub(vim.api, "nvim_create_user_command")
+
+        ensure.setup({ autocmd = false })
+
+        assert.stub(vim.api.nvim_create_autocmd).was_not_called()
+        assert
+            .stub(vim.api.nvim_create_user_command)
+            .was_called_with("Ensure", match.is_function(), match.table_with({ nargs = "*", bang = true }))
+    end)
+
     it("calls install when opts.install is true", function()
         helpers.stub(ensure, "install")
 

@@ -28,6 +28,7 @@
 
 ---@class ensure.Config
 ---@field install boolean Force installing everything on start
+---@field autocmd boolean Create BufRead/BufNewFile autoinstall autocmd
 ---@field packages table List of package names to ensure are installed via mason.nvim
 ---@field parsers ParsersConfig|string[] Treesitter parsers config or list of parsers to ensure are installed
 ---@field linters LintersConfig Linters by filetype with optional auto config
@@ -41,6 +42,7 @@
 ---@type ensure.Config
 local defaults = {
     install = false,
+    autocmd = true,
     packages = {},
     parsers = {
         auto = true,

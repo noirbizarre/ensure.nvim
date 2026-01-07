@@ -10,12 +10,14 @@ function M.setup(opts)
         plugin:setup(config)
     end
 
-    vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
-        group = vim.api.nvim_create_augroup("ensure", { clear = true }),
-        pattern = "*",
-        callback = M.autoinstall,
-        desc = "Ensure: Auto install missing packages for the current buffer",
-    })
+    if config.autocmd then
+        vim.api.nvim_create_autocmd({ "BufNewFile", "BufRead" }, {
+            group = vim.api.nvim_create_augroup("ensure", { clear = true }),
+            pattern = "*",
+            callback = M.autoinstall,
+            desc = "Ensure: Auto install missing packages for the current buffer",
+        })
+    end
 
     -- Lazy-load command module only when the command is invoked
     vim.api.nvim_create_user_command("Ensure", function(cmd_opts)

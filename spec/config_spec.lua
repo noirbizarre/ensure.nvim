@@ -5,6 +5,7 @@ describe("ensure.config", function()
         local cfg = config.setup()
 
         assert.is_false(cfg.install)
+        assert.is_true(cfg.autocmd)
         assert.same({}, cfg.packages)
         assert.same({ auto = true }, cfg.parsers)
         assert.same({ auto = false, clear = false }, cfg.formatters)
