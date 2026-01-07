@@ -235,6 +235,25 @@ This is useful when you want project-specific tooling without inheriting your gl
 > [!TIP]
 > Set `install = true` in options to run installation on startup.
 
+## Lua API
+
+The same functionality is available from Lua:
+
+```lua
+-- Equivalent of :Ensure
+require("ensure").install()
+
+-- Equivalent of :Ensure!
+require("ensure").install({ all = true })
+```
+
+`ensure.nvim` also automatically installs missing tools when you open a file (`BufRead`/`BufNewFile`).
+To trigger that logic manually for the current buffer:
+
+```lua
+require("ensure").autoinstall()
+```
+
 ## Project-Specific Configuration
 
 Override settings per-project using a `.lazy.lua` file in your project root:
