@@ -124,8 +124,9 @@ describe("ensure.plugin.lsp", function()
             assert.is_true(plugin.auto.config.enable)
             assert.same({
                 "copilot",
-                "harper_ls",
+                "codebook",
                 "grammarly",
+                "harper_ls",
                 "ltex",
                 "ltex_plus",
                 "prosemd_lsp",
@@ -153,8 +154,9 @@ describe("ensure.plugin.lsp", function()
             assert.is_false(plugin.auto.config.enable)
             assert.same({
                 "copilot",
-                "harper_ls",
+                "codebook",
                 "grammarly",
+                "harper_ls",
                 "ltex",
                 "ltex_plus",
                 "prosemd_lsp",
@@ -202,8 +204,9 @@ describe("ensure.plugin.lsp", function()
             -- User ignore list is merged with defaults
             assert.same({
                 "copilot",
-                "harper_ls",
+                "codebook",
                 "grammarly",
+                "harper_ls",
                 "ltex",
                 "ltex_plus",
                 "prosemd_lsp",
