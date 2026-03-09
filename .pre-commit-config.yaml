@@ -17,23 +17,23 @@ repos:
       - id: check-merge-conflict
 
   - repo: https://github.com/JohnnyMorganz/StyLua
-    rev: v2.3.1
+    rev: v2.4.0
     hooks:
       - id: stylua-github
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.36.0
+    rev: 0.37.0
     hooks:
       - id: check-github-workflows
 
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.4.1
+    rev: v2.4.2
     hooks:
     - id: codespell
       args: ["--write-changes"]
 
   - repo: https://github.com/DavidAnson/markdownlint-cli2
-    rev: v0.20.0
+    rev: v0.21.0
     hooks:
     - id: markdownlint-cli2
       args: ["--fix"]
