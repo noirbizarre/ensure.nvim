@@ -102,6 +102,30 @@ By default, tree-sitter parsers are automatically installed on startup. To disab
 }
 ```
 
+### Disabling Parsers for Specific Filetypes
+
+To prevent a parser from being used/activated — even if it is already installed — use `parsers.disable`:
+
+```lua
+{
+    "noirbizarre/ensure.nvim",
+    opts = {
+        parsers = {
+            disable = { "ruby", "perl" },
+        },
+    },
+}
+```
+
+Disabled parsers are actively stopped when opening a matching file, preventing tree-sitter highlighting and other features for those filetypes.
+
+> [!NOTE]
+> `parsers.disable` is different from `ignore.parsers`:
+> - **`parsers.disable`**: Prevents a parser from being **used**, even if already installed. Tree-sitter is actively stopped for buffers with a disabled parser.
+> - **`ignore.parsers`**: Prevents a parser from being **installed**, but if already installed (e.g., manually), it will still be used normally.
+>
+> For per-project overrides, `parsers.disable` is the preferred option since it appends via `lazy.nvim` opts merging.
+
 ### Custom Filetype-to-Parser Mappings
 
 `ensure.nvim` automatically resolves filetypes to parser names using `vim.treesitter.language.get_lang()`. This means:
@@ -184,7 +208,7 @@ return {
 ```
 
 These are automatically merged. The following lists support `lazy.nvim` merging out of the box:
-`packages`, `parsers`, `plugins`, `lsp.enable`, `lsp.disable`, `ignore.packages`, `ignore.parsers`
+`packages`, `parsers`, `parsers.disable`, `plugins`, `lsp.enable`, `lsp.disable`, `ignore.packages`, `ignore.parsers`
 
 ### Clearing Previous Configuration
 
@@ -356,7 +380,8 @@ Run `:checkhealth ensure` to verify your setup.
 
         -- Tree-sitter parsers
         -- Can include auto = false to disable auto-installation on startup
-        parsers = { "lua", "python", auto = true },
+        -- Can include disable = { "parser" } to prevent specific parsers from being used
+        parsers = { "lua", "python", auto = true, disable = {} },
 
         -- LSP servers
         lsp = {

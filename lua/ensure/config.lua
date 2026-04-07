@@ -25,6 +25,7 @@
 
 ---@class ParsersConfig
 ---@field auto boolean Whether to auto-install parsers on startup (default: true)
+---@field disable string[] List of parser names to disable (prevents activation even if installed)
 
 ---@class ensure.Config
 ---@field install boolean Force installing everything on start
@@ -46,6 +47,7 @@ local defaults = {
     packages = {},
     parsers = {
         auto = true,
+        disable = {},
     },
     formatters = {
         auto = false,

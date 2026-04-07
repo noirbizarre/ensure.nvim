@@ -21,6 +21,7 @@ return {
         "lsp.enable",
         "packages",
         "parsers",
+        "parsers.disable",
         "plugins",
     },
 }

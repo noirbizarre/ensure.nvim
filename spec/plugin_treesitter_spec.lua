@@ -228,6 +228,149 @@ describe("ensure.plugin.treesitter", function()
             .was_called_with("Using `master` branch of `nvim-treesitter`, `main` branch is required")
     end)
 
+    it("setup stores disable list from parsers.disable", function()
+        helpers.stub(ts, "install")
+
+        ---@diagnostic disable-next-line: missing-fields
+        plugin:setup({
+            parsers = { "lua", "rust", disable = { "rust" } },
+            ---@diagnostic disable-next-line: missing-fields
+            ignore = { parsers = {} },
+        })
+
+        assert.same({ "lua", "rust" }, plugin.parsers)
+        assert.same({ "rust" }, plugin.disable)
+        assert.is_true(plugin.auto)
+
+        -- Wait for vim.schedule callbacks to execute
+        helpers.flush_schedule()
+
+        -- Disabled parser "rust" should be filtered from install
+        assert.stub(ts.install).was_called_with({ "lua" })
+    end)
+
+    it("setup defaults disable to empty list when not provided", function()
+        helpers.stub(ts, "install")
+
+        ---@diagnostic disable-next-line: missing-fields
+        plugin:setup({
+            parsers = { "lua" },
+            ---@diagnostic disable-next-line: missing-fields
+            ignore = { parsers = {} },
+        })
+
+        assert.same({}, plugin.disable)
+    end)
+
+    it("autoinstall stops treesitter for disabled parsers", function()
+        helpers.stub(ts, "install")
+        helpers.stub(vim.treesitter, "stop")
+
+        plugin.is_installed = true
+        plugin.ignore = {}
+        plugin.disable = { "python" }
+
+        plugin:autoinstall("python")
+        assert.stub(vim.treesitter.stop).was_called()
+        assert.stub(ts.install).was_not_called()
+    end)
+
+    it("autoinstall resolves filetype to parser name before checking disable list", function()
+        helpers.stub(ts, "install")
+        helpers.stub(ts, "get_available", function()
+            return { "bash", "tsx" }
+        end)
+        helpers.stub(vim.treesitter, "stop")
+
+        plugin.is_installed = true
+        plugin.ignore = {}
+        plugin.disable = { "bash" } -- disable the parser name, not filetype
+
+        -- "sh" resolves to "bash" which is disabled
+        plugin:autoinstall("sh")
+        assert.stub(vim.treesitter.stop).was_called()
+        assert.stub(ts.install).was_not_called()
+    end)
+
+    it("autoinstall does not stop treesitter for non-disabled parsers", function()
+        helpers.stub(ts, "install")
+        helpers.stub(vim.treesitter, "stop")
+
+        plugin.is_installed = true
+        plugin.ignore = {}
+        plugin.disable = { "rust" }
+
+        plugin:autoinstall("python")
+        assert.stub(vim.treesitter.stop).was_not_called()
+        assert.stub(ts.install).was_called_with({ "python" })
+    end)
+
+    it("install filters disabled parsers from candidates", function()
+        helpers.stub(ts, "install")
+
+        plugin.is_installed = true
+        plugin.parsers = { "lua", "python", "rust" }
+        plugin.ignore = {}
+        plugin.disable = { "rust" }
+
+        plugin:install()
+
+        assert.stub(ts.install).was_called_with({ "lua", "python" })
+    end)
+
+    it("install with all=true also filters disabled parsers", function()
+        plugin.is_installed = true
+        plugin.ignore = {}
+        plugin.disable = { "rust" }
+
+        helpers.stub(ts, "install")
+        helpers.stub(ts, "get_available", function(tier)
+            if tier == 1 then
+                return { "python", "rust" }
+            elseif tier == 2 then
+                return { "go" }
+            elseif tier >= 3 then
+                return { "typescript" }
+            else
+                return { "python", "go", "rust", "typescript" }
+            end
+        end)
+
+        plugin:install({ all = true })
+
+        assert.stub(ts.install).was_called_with({ "python", "go" })
+    end)
+
+    it("disable and ignore work independently", function()
+        helpers.stub(ts, "install")
+        helpers.stub(vim.treesitter, "stop")
+
+        plugin.is_installed = true
+        plugin.ignore = { "lua" }
+        plugin.disable = { "rust" }
+
+        -- "lua" is ignored: skip install but don't stop treesitter
+        plugin:autoinstall("lua")
+        assert.stub(vim.treesitter.stop).was_not_called()
+        assert.stub(ts.install).was_not_called()
+
+        ts.install:clear()
+        vim.treesitter.stop:clear()
+
+        -- "rust" is disabled: stop treesitter, don't install
+        plugin:autoinstall("rust")
+        assert.stub(vim.treesitter.stop).was_called()
+        assert.stub(ts.install).was_not_called()
+
+        ts.install:clear()
+        vim.treesitter.stop:clear()
+
+        -- "python" is neither: install normally
+        plugin:autoinstall("python")
+        assert.stub(vim.treesitter.stop).was_not_called()
+        assert.stub(ts.install).was_called_with({ "python" })
+    end)
+
     it("setup does nothing when nvim-treesitter is not installed", function()
         helpers.modules_not_found("nvim-treesitter")
 

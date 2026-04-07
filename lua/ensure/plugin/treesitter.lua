@@ -19,6 +19,7 @@ function M:setup(opts)
         :totable()
     self.auto = parsers.auto ~= false -- Default to true
     self.ignore = opts.ignore.parsers
+    self.disable = parsers.disable or {}
 
     -- Defer parser installation to avoid blocking startup
     if self.auto then
@@ -46,11 +47,18 @@ end
 ---Autocommand callback installing missing parser for the current filetype
 ---Uses vim.treesitter.language.get_lang() to resolve filetype to parser name,
 ---supporting user-registered filetypes via vim.treesitter.language.register()
+---Disabled parsers (parsers.disable) are actively stopped for the buffer
 function M:autoinstall(ft)
     if self.is_installed then
         local ts = require("nvim-treesitter")
         -- Resolve filetype to parser name (e.g., "typescriptreact" -> "tsx", "sh" -> "bash")
         local lang = vim.treesitter.language.get_lang(ft) or ft
+        -- Disabled parsers: actively stop treesitter for the buffer
+        if vim.list_contains(self.disable, lang) then
+            local bufnr = vim.api.nvim_get_current_buf()
+            vim.treesitter.stop(bufnr)
+            return
+        end
         if not vim.list_contains(self.ignore, lang) and vim.list_contains(ts.get_available(), lang) then
             ts.install({ lang })
         end
@@ -71,7 +79,14 @@ function M:install(opts)
         end
 
         for _, lang in pairs(candidates) do
-            if lang and not (vim.tbl_contains(self.ignore, lang) or vim.tbl_contains(installed, lang)) then
+            if
+                lang
+                and not (
+                    vim.tbl_contains(self.ignore, lang)
+                    or vim.tbl_contains(self.disable, lang)
+                    or vim.tbl_contains(installed, lang)
+                )
+            then
                 table.insert(to_install, lang)
             end
         end
